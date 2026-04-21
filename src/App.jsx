@@ -159,7 +159,12 @@ function MetricCard({ label, value }) {
 }
 
 export default function App() {
-  const [mode, setMode] = useState("customer");
+  const getModeFromURL = () => {
+  const params = new URLSearchParams(window.location.search);
+  return params.get("mode") || "customer";
+};
+
+const [mode, setMode] = useState(getModeFromURL());
   const [menu, setMenu] = useState([]);
   const [orders, setOrders] = useState([]);
   const [cart, setCart] = useState([]);
@@ -389,13 +394,13 @@ export default function App() {
 
         <div style={{ ...styles.card, marginBottom: 24 }}>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            {[
-              ["customer", "العميل", <QrCode size={16} />],
-              ["cashier", "الاستقبال", <LayoutDashboard size={16} />],
-              ["kitchen", "المطبخ", <ChefHat size={16} />],
-              ["pickup", "الاستلام", <Bell size={16} />],
-              ["admin", "الإدارة", <Settings size={16} />],
-            ].map(([value, label, icon]) => (
+            {mode !== "customer" && [
+  ["customer", "العميل", <QrCode size={16} />],
+  ["cashier", "الاستقبال", <LayoutDashboard size={16} />],
+  ["kitchen", "المطبخ", <ChefHat size={16} />],
+  ["pickup", "الاستلام", <Bell size={16} />],
+  ["admin", "الإدارة", <Settings size={16} />],
+].map(([value, label, icon]) => (
               <button
                 key={String(value)}
                 onClick={() => setMode(value)}
