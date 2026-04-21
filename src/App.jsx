@@ -15,6 +15,9 @@ import {
   Store,
   Package,
   Sparkles,
+  Image as ImageIcon,
+  Palette,
+  Upload,
 } from "lucide-react";
 import { initializeApp, getApps, getApp } from "firebase/app";
 import {
@@ -28,6 +31,7 @@ import {
   updateDoc,
   serverTimestamp,
   getDocs,
+  setDoc,
 } from "firebase/firestore";
 
 const firebaseConfig = {
@@ -126,6 +130,16 @@ const defaultMenu = [
   },
 ];
 
+const defaultBrand = {
+  brandName: "KRS Coffee Truck",
+  logoUrl: "",
+  primaryColor: "#111111",
+  accentColor: "#c8a96b",
+  heroTitle: "اطلب مباشرة من المنيو",
+  heroSubtitle:
+    "امسح الباركود، اختر طلبك، ثم أرسل الطلب ليصل مباشرة إلى نظام الكوفي أو الفود ترك.",
+};
+
 const statusMap = {
   new: { label: "جديد", bg: "#fef3c7", color: "#92400e", border: "#fde68a" },
   preparing: { label: "قيد التحضير", bg: "#dbeafe", color: "#1e40af", border: "#93c5fd" },
@@ -153,14 +167,6 @@ const styles = {
     maxWidth: 1280,
     margin: "0 auto",
     padding: 16,
-  },
-  hero: {
-    background: "linear-gradient(135deg, #111111 0%, #1f1f1f 55%, #2c2c2c 100%)",
-    color: "white",
-    borderRadius: 28,
-    padding: 24,
-    boxShadow: "0 10px 30px rgba(0,0,0,0.12)",
-    marginBottom: 24,
   },
   card: {
     background: "white",
@@ -264,8 +270,13 @@ function MetricCard({ label, value }) {
   );
 }
 
+const getModeFromURL = () => {
+  const params = new URLSearchParams(window.location.search);
+  return params.get("mode") || "customer";
+};
+
 export default function App() {
-  const [mode, setMode] = useState("customer");
+  const [mode, setMode] = useState(getModeFromURL());
   const [menu, setMenu] = useState([]);
   const [orders, setOrders] = useState([]);
   const [cart, setCart] = useState([]);
@@ -275,16 +286,18 @@ export default function App() {
   const [phone, setPhone] = useState("");
   const [notes, setNotes] = useState("");
   const [notifyCustomer, setNotifyCustomer] = useState(true);
-  const [truckName, setTruckName] = useState("KRS Coffee Truck");
+  const [brand, setBrand] = useState(defaultBrand);
   const [newItemName, setNewItemName] = useState("");
   const [newItemCategory, setNewItemCategory] = useState("");
   const [newItemPrice, setNewItemPrice] = useState("");
+  const [newItemImage, setNewItemImage] = useState("");
+  const [newItemDescription, setNewItemDescription] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
-    const setupMenu = async () => {
+    const setupData = async () => {
       try {
         const currentMenu = await getDocs(collection(db, "menu"));
         if (currentMenu.empty) {
@@ -295,12 +308,14 @@ export default function App() {
             });
           }
         }
+
+        await setDoc(doc(db, "settings", "brand"), defaultBrand, { merge: true });
       } catch (error) {
         console.error(error);
       }
     };
 
-    setupMenu();
+    setupData();
 
     const menuQuery = query(collection(db, "menu"));
     const ordersQuery = query(collection(db, "orders"), orderBy("createdAt", "desc"));
@@ -331,9 +346,22 @@ export default function App() {
       }
     );
 
+    const unsubBrand = onSnapshot(
+      doc(db, "settings", "brand"),
+      (snapshot) => {
+        if (snapshot.exists()) {
+          setBrand({ ...defaultBrand, ...snapshot.data() });
+        }
+      },
+      (error) => {
+        console.error(error);
+      }
+    );
+
     return () => {
       unsubMenu();
       unsubOrders();
+      unsubBrand();
     };
   }, []);
 
@@ -369,12 +397,26 @@ export default function App() {
       if (exists) {
         return prev.map((p) => (p.id === item.id ? { ...p, qty: p.qty + 1 } : p));
       }
-      return [...prev, { id: item.id, name: item.name, price: Number(item.price), qty: 1 }];
+      return [
+        ...prev,
+        {
+          id: item.id,
+          name: item.name,
+          price: Number(item.price),
+          qty: 1,
+          image: item.image || "",
+          itemNote: "",
+        },
+      ];
     });
   };
 
   const updateQty = (id, delta) => {
     setCart((prev) => prev.map((i) => (i.id === id ? { ...i, qty: i.qty + delta } : i)).filter((i) => i.qty > 0));
+  };
+
+  const updateCartItemNote = (id, value) => {
+    setCart((prev) => prev.map((item) => (item.id === id ? { ...item, itemNote: value } : item)));
   };
 
   const placeOrder = async () => {
@@ -394,7 +436,7 @@ export default function App() {
         notes,
         items: cart,
         total: cartTotal,
-        truckName,
+        truckName: brand.brandName,
         notifyCustomer,
         status: "new",
         createdAt: serverTimestamp(),
@@ -440,6 +482,19 @@ export default function App() {
     }
   };
 
+  const updateMenuItemField = async (itemId, field, value) => {
+    try {
+      setErrorMessage("");
+      await updateDoc(doc(db, "menu", itemId), {
+        [field]: value,
+        updatedAt: serverTimestamp(),
+      });
+    } catch (error) {
+      setErrorMessage("فشل تعديل بيانات الصنف");
+      console.error(error);
+    }
+  };
+
   const addMenuItem = async () => {
     if (!newItemName.trim() || !newItemCategory.trim() || !newItemPrice.trim()) return;
 
@@ -451,13 +506,27 @@ export default function App() {
         price: Number(newItemPrice),
         available: true,
         prepTime: 5,
+        image: newItemImage,
+        description: newItemDescription,
         createdAt: serverTimestamp(),
       });
       setNewItemName("");
       setNewItemCategory("");
       setNewItemPrice("");
+      setNewItemImage("");
+      setNewItemDescription("");
     } catch (error) {
       setErrorMessage("فشل إضافة الصنف الجديد");
+      console.error(error);
+    }
+  };
+
+  const saveBrandSettings = async () => {
+    try {
+      setErrorMessage("");
+      await setDoc(doc(db, "settings", "brand"), brand, { merge: true });
+    } catch (error) {
+      setErrorMessage("فشل حفظ إعدادات البراند");
       console.error(error);
     }
   };
@@ -468,29 +537,43 @@ export default function App() {
     return orders;
   }, [orders, mode]);
 
+  const primaryColor = brand.primaryColor || "#111111";
+  const accentColor = brand.accentColor || "#c8a96b";
+
   return (
     <div style={styles.app}>
       <div style={styles.container}>
-        <div style={styles.hero}>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 16, justifyContent: "space-between", alignItems: "center" }}>
-            <div style={{ flex: "1 1 420px" }}>
-              <div style={{ display: "inline-flex", gap: 8, alignItems: "center", background: "rgba(255,255,255,0.1)", padding: "10px 14px", borderRadius: 999, fontSize: 14 }}>
-                <Sparkles size={16} />
-                نظام حقيقي مباشر مربوط بـ Firebase
+        {mode !== "customer" && (
+          <div
+            style={{
+              background: `linear-gradient(135deg, ${primaryColor} 0%, #1f1f1f 55%, ${accentColor} 100%)`,
+              color: "white",
+              borderRadius: 28,
+              padding: 24,
+              boxShadow: "0 10px 30px rgba(0,0,0,0.12)",
+              marginBottom: 24,
+            }}
+          >
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 16, justifyContent: "space-between", alignItems: "center" }}>
+              <div style={{ flex: "1 1 420px" }}>
+                <div style={{ display: "inline-flex", gap: 8, alignItems: "center", background: "rgba(255,255,255,0.1)", padding: "10px 14px", borderRadius: 999, fontSize: 14 }}>
+                  <Sparkles size={16} />
+                  نظام حقيقي مباشر مربوط بـ Firebase
+                </div>
+                <h1 style={{ fontSize: 46, margin: "16px 0 10px" }}>{brand.brandName}</h1>
+                <p style={{ color: "rgba(255,255,255,0.8)", lineHeight: 1.8, maxWidth: 760 }}>
+                  العميل يمسح QR، يدخل الاسم ورقم الهاتف، يطلب من المنيو، ثم يصل الطلب مباشرة إلى النظام الداخلي داخل الكوفي أو الفود ترك.
+                </p>
               </div>
-              <h1 style={{ fontSize: 46, margin: "16px 0 10px" }}>KRS Truck Order Pro</h1>
-              <p style={{ color: "rgba(255,255,255,0.8)", lineHeight: 1.8, maxWidth: 760 }}>
-                العميل يمسح QR، يدخل الاسم ورقم الهاتف، يطلب من المنيو، ثم يصل الطلب مباشرة إلى النظام الداخلي داخل الكوفي أو الفود ترك، وبعد الجاهزية يتم التواصل معه.
-              </p>
-            </div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, flex: "1 1 420px" }}>
-              <div style={{ background: "rgba(255,255,255,0.08)", borderRadius: 24, padding: 18 }}><div style={{ color: "rgba(255,255,255,0.7)" }}>إجمالي الطلبات</div><div style={{ fontSize: 30, fontWeight: 800, marginTop: 8 }}>{totalOrders}</div></div>
-              <div style={{ background: "rgba(255,255,255,0.08)", borderRadius: 24, padding: 18 }}><div style={{ color: "rgba(255,255,255,0.7)" }}>جديد</div><div style={{ fontSize: 30, fontWeight: 800, marginTop: 8 }}>{newOrders}</div></div>
-              <div style={{ background: "rgba(255,255,255,0.08)", borderRadius: 24, padding: 18 }}><div style={{ color: "rgba(255,255,255,0.7)" }}>جاهز</div><div style={{ fontSize: 30, fontWeight: 800, marginTop: 8 }}>{readyOrders}</div></div>
-              <div style={{ background: "rgba(255,255,255,0.08)", borderRadius: 24, padding: 18 }}><div style={{ color: "rgba(255,255,255,0.7)" }}>مبيعات مسلمة</div><div style={{ fontSize: 30, fontWeight: 800, marginTop: 8 }}>{money(totalSales)}</div></div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, flex: "1 1 420px" }}>
+                <div style={{ background: "rgba(255,255,255,0.08)", borderRadius: 24, padding: 18 }}><div style={{ color: "rgba(255,255,255,0.7)" }}>إجمالي الطلبات</div><div style={{ fontSize: 30, fontWeight: 800, marginTop: 8 }}>{totalOrders}</div></div>
+                <div style={{ background: "rgba(255,255,255,0.08)", borderRadius: 24, padding: 18 }}><div style={{ color: "rgba(255,255,255,0.7)" }}>جديد</div><div style={{ fontSize: 30, fontWeight: 800, marginTop: 8 }}>{newOrders}</div></div>
+                <div style={{ background: "rgba(255,255,255,0.08)", borderRadius: 24, padding: 18 }}><div style={{ color: "rgba(255,255,255,0.7)" }}>جاهز</div><div style={{ fontSize: 30, fontWeight: 800, marginTop: 8 }}>{readyOrders}</div></div>
+                <div style={{ background: "rgba(255,255,255,0.08)", borderRadius: 24, padding: 18 }}><div style={{ color: "rgba(255,255,255,0.7)" }}>مبيعات مسلمة</div><div style={{ fontSize: 30, fontWeight: 800, marginTop: 8 }}>{money(totalSales)}</div></div>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {errorMessage ? (
           <div style={{ ...styles.card, borderColor: "#fecaca", background: "#fef2f2", color: "#991b1b", marginBottom: 24 }}>
@@ -500,53 +583,81 @@ export default function App() {
 
         {isLoading ? <div style={{ ...styles.card, marginBottom: 24 }}>جاري تحميل البيانات من Firebase...</div> : null}
 
-        <div style={{ ...styles.card, marginBottom: 24 }}>
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            {[
-              ["customer", "العميل", <QrCode size={16} />],
-              ["cashier", "الاستقبال", <LayoutDashboard size={16} />],
-              ["kitchen", "المطبخ", <ChefHat size={16} />],
-              ["pickup", "الاستلام", <Bell size={16} />],
-              ["admin", "الإدارة", <Settings size={16} />],
-            ].map(([value, label, icon]) => (
-              <button
-                key={String(value)}
-                onClick={() => setMode(value)}
-                style={{
-                  ...styles.buttonSecondary,
-                  background: mode === value ? "#111111" : "white",
-                  color: mode === value ? "white" : "#111111",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 8,
-                }}
-              >
-                {icon}
-                {label}
-              </button>
-            ))}
+        {mode !== "customer" && (
+          <div style={{ ...styles.card, marginBottom: 24 }}>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              {[
+                ["customer", "العميل", <QrCode size={16} />],
+                ["cashier", "الاستقبال", <LayoutDashboard size={16} />],
+                ["kitchen", "المطبخ", <ChefHat size={16} />],
+                ["pickup", "الاستلام", <Bell size={16} />],
+                ["admin", "الإدارة", <Settings size={16} />],
+              ].map(([value, label, icon]) => (
+                <button
+                  key={String(value)}
+                  onClick={() => setMode(value)}
+                  style={{
+                    ...styles.buttonSecondary,
+                    background: mode === value ? primaryColor : "white",
+                    color: mode === value ? "white" : "#111111",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                  }}
+                >
+                  {icon}
+                  {label}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
         {mode === "customer" && (
           <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 24 }}>
             <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
               <div style={{ ...styles.card, padding: 0, overflow: "hidden" }}>
-                <div style={{
-                  background: "linear-gradient(135deg, #111111 0%, #262626 100%)",
-                  color: "white",
-                  padding: 24,
-                }}>
+                <div
+                  style={{
+                    background: `linear-gradient(135deg, ${primaryColor} 0%, #262626 70%, ${accentColor} 100%)`,
+                    color: "white",
+                    padding: 24,
+                  }}
+                >
                   <div style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
-                    <div>
-                      <div style={{ display: "inline-flex", gap: 8, alignItems: "center", background: "rgba(255,255,255,0.1)", padding: "8px 12px", borderRadius: 999, fontSize: 13 }}>
-                        <Store size={15} />
-                        {truckName}
+                    <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                      {brand.logoUrl ? (
+                        <img
+                          src={brand.logoUrl}
+                          alt={brand.brandName}
+                          style={{ width: 74, height: 74, objectFit: "cover", borderRadius: 22, border: "2px solid rgba(255,255,255,0.25)" }}
+                        />
+                      ) : (
+                        <div
+                          style={{
+                            width: 74,
+                            height: 74,
+                            borderRadius: 22,
+                            background: "rgba(255,255,255,0.12)",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            border: "2px solid rgba(255,255,255,0.2)",
+                          }}
+                        >
+                          <Store size={30} />
+                        </div>
+                      )}
+                      <div>
+                        <div style={{ display: "inline-flex", gap: 8, alignItems: "center", background: "rgba(255,255,255,0.1)", padding: "8px 12px", borderRadius: 999, fontSize: 13 }}>
+                          <Store size={15} />
+                          {brand.brandName}
+                        </div>
+                        <h2 style={{ margin: "14px 0 8px", fontSize: 34 }}>{brand.heroTitle}</h2>
+                        <p style={{ margin: 0, color: "rgba(255,255,255,0.78)", lineHeight: 1.8, maxWidth: 720 }}>
+                          {brand.heroSubtitle}
+                        </p>
                       </div>
-                      <h2 style={{ margin: "14px 0 8px", fontSize: 34 }}>اطلب مباشرة من المنيو</h2>
-                      <p style={{ margin: 0, color: "rgba(255,255,255,0.78)", lineHeight: 1.8 }}>
-                        اختر طلبك، أضفه إلى السلة، ثم أدخل اسمك ورقمك وسيصل طلبك مباشرة إلى نظام الكوفي أو الفود ترك.
-                      </p>
                     </div>
                     <div style={{ minWidth: 220, background: "rgba(255,255,255,0.08)", borderRadius: 22, padding: 18 }}>
                       <div style={{ fontSize: 13, color: "rgba(255,255,255,0.72)" }}>مدة تجهيز تقريبية</div>
@@ -566,8 +677,8 @@ export default function App() {
                       <input style={styles.input} value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="05XXXXXXXX" />
                     </div>
                     <div style={{ gridColumn: "1 / -1" }}>
-                      <label style={{ display: "block", marginBottom: 8, color: "#64748b" }}>ملاحظات الطلب</label>
-                      <textarea style={styles.textarea} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="مثال: بدون ثلج / صوص زيادة / بدون بصل" />
+                      <label style={{ display: "block", marginBottom: 8, color: "#64748b" }}>ملاحظات عامة على الطلب</label>
+                      <textarea style={styles.textarea} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="مثال: أتواجد أمام السيارة البيضاء / بدون أدوات / وقت الاستلام..." />
                     </div>
                   </div>
                 </div>
@@ -593,7 +704,9 @@ export default function App() {
                       onClick={() => setSelectedCategory(category)}
                       style={{
                         ...styles.categoryChip,
-                        ...(selectedCategory === category ? styles.categoryChipActive : {}),
+                        ...(selectedCategory === category
+                          ? { ...styles.categoryChipActive, background: primaryColor, border: `1px solid ${primaryColor}` }
+                          : {}),
                       }}
                     >
                       {category}
@@ -615,14 +728,14 @@ export default function App() {
                             <div style={{ fontSize: 20, fontWeight: 800 }}>{item.name}</div>
                             <div style={{ color: "#64748b", marginTop: 6 }}>{item.category}</div>
                           </div>
-                          <div style={{ fontWeight: 800, fontSize: 16 }}>{money(item.price)}</div>
+                          <div style={{ fontWeight: 800, fontSize: 16, color: primaryColor }}>{money(item.price)}</div>
                         </div>
                         <div style={{ color: "#6b7280", marginTop: 10, lineHeight: 1.7, minHeight: 48 }}>
                           {item.description || "صنف مميز من قائمة الكوفي أو التراك."}
                         </div>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 14 }}>
                           <div style={{ color: "#94a3b8", fontSize: 13 }}>وقت تحضير: {item.prepTime} دقائق</div>
-                          <button style={styles.button} onClick={() => addToCart(item)}>إضافة</button>
+                          <button style={{ ...styles.button, background: primaryColor }} onClick={() => addToCart(item)}>إضافة</button>
                         </div>
                       </div>
                     </div>
@@ -642,15 +755,31 @@ export default function App() {
                   ) : (
                     cart.map((item) => (
                       <div key={item.id} style={{ border: "1px solid #e5e7eb", borderRadius: 18, padding: 16 }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
-                          <div>
-                            <div style={{ fontWeight: 700 }}>{item.name}</div>
-                            <div style={{ color: "#64748b", marginTop: 4 }}>{money(item.price * item.qty)}</div>
-                          </div>
-                          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                            <button style={styles.buttonSecondary} onClick={() => updateQty(item.id, -1)}><Minus size={16} /></button>
-                            <div style={{ minWidth: 18, textAlign: "center" }}>{item.qty}</div>
-                            <button style={styles.buttonSecondary} onClick={() => updateQty(item.id, 1)}><Plus size={16} /></button>
+                        <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+                          {item.image ? (
+                            <img src={item.image} alt={item.name} style={{ width: 62, height: 62, borderRadius: 14, objectFit: "cover" }} />
+                          ) : null}
+                          <div style={{ flex: 1 }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
+                              <div>
+                                <div style={{ fontWeight: 700 }}>{item.name}</div>
+                                <div style={{ color: "#64748b", marginTop: 4 }}>{money(item.price * item.qty)}</div>
+                              </div>
+                              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                                <button style={styles.buttonSecondary} onClick={() => updateQty(item.id, -1)}><Minus size={16} /></button>
+                                <div style={{ minWidth: 18, textAlign: "center" }}>{item.qty}</div>
+                                <button style={styles.buttonSecondary} onClick={() => updateQty(item.id, 1)}><Plus size={16} /></button>
+                              </div>
+                            </div>
+                            <div style={{ marginTop: 10 }}>
+                              <label style={{ display: "block", marginBottom: 6, color: "#64748b", fontSize: 13 }}>ملاحظات هذا الصنف</label>
+                              <textarea
+                                style={{ ...styles.textarea, minHeight: 76 }}
+                                value={item.itemNote || ""}
+                                onChange={(e) => updateCartItemNote(item.id, e.target.value)}
+                                placeholder="مثال: بدون مخلل / زيادة ثلج / حار خفيف"
+                              />
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -660,11 +789,11 @@ export default function App() {
                     <span>إشعار عند الجاهزية</span>
                     <input type="checkbox" checked={notifyCustomer} onChange={(e) => setNotifyCustomer(e.target.checked)} />
                   </div>
-                  <div style={{ background: "#111111", color: "white", borderRadius: 18, padding: 16, display: "flex", justifyContent: "space-between", fontWeight: 800, fontSize: 18 }}>
+                  <div style={{ background: primaryColor, color: "white", borderRadius: 18, padding: 16, display: "flex", justifyContent: "space-between", fontWeight: 800, fontSize: 18 }}>
                     <span>الإجمالي</span>
                     <span>{money(cartTotal)}</span>
                   </div>
-                  <button style={{ ...styles.button, opacity: isSaving ? 0.7 : 1, width: "100%" }} onClick={placeOrder} disabled={!customerName || !phone || cart.length === 0 || isSaving}>
+                  <button style={{ ...styles.button, background: primaryColor, opacity: isSaving ? 0.7 : 1, width: "100%" }} onClick={placeOrder} disabled={!customerName || !phone || cart.length === 0 || isSaving}>
                     {isSaving ? "جاري إرسال الطلب..." : "تأكيد وإرسال الطلب"}
                   </button>
                   <div style={{ color: "#64748b", lineHeight: 1.8, fontSize: 14 }}>
@@ -708,16 +837,19 @@ export default function App() {
 
                     <div style={{ border: "1px solid #e5e7eb", background: "#fafaf9", borderRadius: 18, padding: 16, marginTop: 16 }}>
                       {(order.items || []).map((item, idx) => (
-                        <div key={`${order.id}-${idx}`} style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-                          <span>{item.name} × {item.qty}</span>
-                          <span style={{ fontWeight: 700 }}>{money(Number(item.price) * item.qty)}</span>
+                        <div key={`${order.id}-${idx}`} style={{ borderBottom: idx !== (order.items || []).length - 1 ? "1px solid #e5e7eb" : "none", paddingBottom: 8, marginBottom: 8 }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                            <span>{item.name} × {item.qty}</span>
+                            <span style={{ fontWeight: 700 }}>{money(Number(item.price) * item.qty)}</span>
+                          </div>
+                          {item.itemNote ? <div style={{ color: "#64748b", fontSize: 13 }}>ملاحظة الصنف: {item.itemNote}</div> : null}
                         </div>
                       ))}
                     </div>
 
-                    {order.notes ? <div style={{ border: "1px solid #e5e7eb", borderRadius: 18, padding: 14, marginTop: 12 }}>ملاحظات: {order.notes}</div> : null}
+                    {order.notes ? <div style={{ border: "1px solid #e5e7eb", borderRadius: 18, padding: 14, marginTop: 12 }}>ملاحظات عامة: {order.notes}</div> : null}
 
-                    <div style={{ background: "#111111", color: "white", borderRadius: 18, padding: 16, display: "flex", justifyContent: "space-between", fontWeight: 800, marginTop: 12 }}>
+                    <div style={{ background: primaryColor, color: "white", borderRadius: 18, padding: 16, display: "flex", justifyContent: "space-between", fontWeight: 800, marginTop: 12 }}>
                       <span>الإجمالي</span>
                       <span>{money(order.total)}</span>
                     </div>
@@ -731,7 +863,7 @@ export default function App() {
                       </div>
                     ) : (
                       <div style={{ marginTop: 12 }}>
-                        <button style={{ ...styles.button, width: "100%" }} onClick={() => setOrderStatus(order.id, "delivered")}>تم التسليم</button>
+                        <button style={{ ...styles.button, background: primaryColor, width: "100%" }} onClick={() => setOrderStatus(order.id, "delivered")}>تم التسليم</button>
                       </div>
                     )}
                   </div>
@@ -742,70 +874,135 @@ export default function App() {
         )}
 
         {mode === "admin" && (
-          <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 24 }}>
-            <div style={styles.card}>
-              <SectionTitle icon={<Package size={20} />} title="إدارة المنيو" sub="من هنا يتحكم صاحب الكوفي بالأصناف المتاحة وغير المتاحة" />
-              <div style={{ marginTop: 20, display: "flex", flexDirection: "column", gap: 12 }}>
-                {menu.map((item) => (
-                  <div key={item.id} style={{ border: "1px solid #e5e7eb", borderRadius: 24, padding: 16, display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
-                    <div>
-                      <div style={{ fontWeight: 800 }}>{item.name}</div>
-                      <div style={{ color: "#64748b", marginTop: 6 }}>{item.category} • {money(item.price)} • {item.prepTime} دقائق</div>
-                    </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1.2fr 0.8fr", gap: 24 }}>
+              <div style={styles.card}>
+                <SectionTitle icon={<Palette size={20} />} title="هوية البراند في صفحة العميل" sub="من هنا تعدل الشعار واسم البراند والألوان التي تظهر للزبون" />
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginTop: 20 }}>
+                  <div>
+                    <label style={{ display: "block", marginBottom: 8, color: "#64748b" }}>اسم البراند</label>
+                    <input style={styles.input} value={brand.brandName} onChange={(e) => setBrand((prev) => ({ ...prev, brandName: e.target.value }))} />
+                  </div>
+                  <div>
+                    <label style={{ display: "block", marginBottom: 8, color: "#64748b" }}>رابط الشعار</label>
+                    <input style={styles.input} value={brand.logoUrl} onChange={(e) => setBrand((prev) => ({ ...prev, logoUrl: e.target.value }))} placeholder="https://...logo.png" />
+                  </div>
+                  <div>
+                    <label style={{ display: "block", marginBottom: 8, color: "#64748b" }}>اللون الأساسي</label>
                     <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                      <div style={{ background: item.available ? "#d1fae5" : "#ffe4e6", color: item.available ? "#065f46" : "#9f1239", padding: "8px 12px", borderRadius: 999, fontWeight: 700 }}>
-                        {item.available ? "متاح" : "غير متاح"}
+                      <input type="color" value={brand.primaryColor} onChange={(e) => setBrand((prev) => ({ ...prev, primaryColor: e.target.value }))} style={{ width: 54, height: 44, border: "none", background: "transparent" }} />
+                      <input style={styles.input} value={brand.primaryColor} onChange={(e) => setBrand((prev) => ({ ...prev, primaryColor: e.target.value }))} />
+                    </div>
+                  </div>
+                  <div>
+                    <label style={{ display: "block", marginBottom: 8, color: "#64748b" }}>اللون الثانوي</label>
+                    <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                      <input type="color" value={brand.accentColor} onChange={(e) => setBrand((prev) => ({ ...prev, accentColor: e.target.value }))} style={{ width: 54, height: 44, border: "none", background: "transparent" }} />
+                      <input style={styles.input} value={brand.accentColor} onChange={(e) => setBrand((prev) => ({ ...prev, accentColor: e.target.value }))} />
+                    </div>
+                  </div>
+                  <div style={{ gridColumn: "1 / -1" }}>
+                    <label style={{ display: "block", marginBottom: 8, color: "#64748b" }}>عنوان الصفحة للعميل</label>
+                    <input style={styles.input} value={brand.heroTitle} onChange={(e) => setBrand((prev) => ({ ...prev, heroTitle: e.target.value }))} />
+                  </div>
+                  <div style={{ gridColumn: "1 / -1" }}>
+                    <label style={{ display: "block", marginBottom: 8, color: "#64748b" }}>الوصف التعريفي</label>
+                    <textarea style={styles.textarea} value={brand.heroSubtitle} onChange={(e) => setBrand((prev) => ({ ...prev, heroSubtitle: e.target.value }))} />
+                  </div>
+                  <div style={{ gridColumn: "1 / -1" }}>
+                    <button style={{ ...styles.button, background: primaryColor }} onClick={saveBrandSettings}>حفظ هوية البراند</button>
+                  </div>
+                </div>
+              </div>
+
+              <div style={styles.card}>
+                <SectionTitle icon={<Store size={20} />} title="معاينة سريعة" sub="هكذا تقريبًا ستظهر صفحة العميل" />
+                <div style={{ marginTop: 20, borderRadius: 24, overflow: "hidden", border: "1px solid #e5e7eb" }}>
+                  <div style={{ background: `linear-gradient(135deg, ${primaryColor} 0%, #262626 70%, ${accentColor} 100%)`, color: "white", padding: 18 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                      {brand.logoUrl ? <img src={brand.logoUrl} alt={brand.brandName} style={{ width: 56, height: 56, borderRadius: 16, objectFit: "cover" }} /> : <div style={{ width: 56, height: 56, borderRadius: 16, background: "rgba(255,255,255,0.12)", display: "flex", alignItems: "center", justifyContent: "center" }}><Store size={24} /></div>}
+                      <div>
+                        <div style={{ fontWeight: 800 }}>{brand.brandName}</div>
+                        <div style={{ fontSize: 13, color: "rgba(255,255,255,0.78)", marginTop: 4 }}>{brand.heroTitle}</div>
                       </div>
-                      <button style={styles.buttonSecondary} onClick={() => toggleAvailability(item.id, item.available)}>{item.available ? "إيقاف" : "تفعيل"}</button>
+                    </div>
+                  </div>
+                  <div style={{ padding: 16, color: "#475569", lineHeight: 1.7 }}>{brand.heroSubtitle}</div>
+                </div>
+              </div>
+            </div>
+
+            <div style={styles.card}>
+              <SectionTitle icon={<Package size={20} />} title="إدارة المنيو والصور" sub="تقدر الآن تعديل صورة كل صنف ورابطها ووصفها من داخل الموقع" />
+              <div style={{ marginTop: 20, display: "flex", flexDirection: "column", gap: 16 }}>
+                {menu.map((item) => (
+                  <div key={item.id} style={{ border: "1px solid #e5e7eb", borderRadius: 24, padding: 16, display: "grid", gridTemplateColumns: "180px 1fr", gap: 16, alignItems: "start" }}>
+                    <div>
+                      <img src={item.image || "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=900&q=80"} alt={item.name} style={{ width: "100%", height: 140, borderRadius: 18, objectFit: "cover", marginBottom: 10 }} />
+                      <div style={{ display: "flex", gap: 8, alignItems: "center", justifyContent: "space-between" }}>
+                        <div style={{ background: item.available ? "#d1fae5" : "#ffe4e6", color: item.available ? "#065f46" : "#9f1239", padding: "8px 12px", borderRadius: 999, fontWeight: 700, fontSize: 13 }}>
+                          {item.available ? "متاح" : "غير متاح"}
+                        </div>
+                        <button style={styles.buttonSecondary} onClick={() => toggleAvailability(item.id, item.available)}>{item.available ? "إيقاف" : "تفعيل"}</button>
+                      </div>
+                    </div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                      <div>
+                        <label style={{ display: "block", marginBottom: 6, color: "#64748b", fontSize: 13 }}>اسم الصنف</label>
+                        <input style={styles.input} value={item.name || ""} onChange={(e) => updateMenuItemField(item.id, "name", e.target.value)} />
+                      </div>
+                      <div>
+                        <label style={{ display: "block", marginBottom: 6, color: "#64748b", fontSize: 13 }}>التصنيف</label>
+                        <input style={styles.input} value={item.category || ""} onChange={(e) => updateMenuItemField(item.id, "category", e.target.value)} />
+                      </div>
+                      <div>
+                        <label style={{ display: "block", marginBottom: 6, color: "#64748b", fontSize: 13 }}>السعر</label>
+                        <input style={styles.input} value={item.price || ""} onChange={(e) => updateMenuItemField(item.id, "price", Number(e.target.value || 0))} />
+                      </div>
+                      <div>
+                        <label style={{ display: "block", marginBottom: 6, color: "#64748b", fontSize: 13 }}>وقت التحضير</label>
+                        <input style={styles.input} value={item.prepTime || ""} onChange={(e) => updateMenuItemField(item.id, "prepTime", Number(e.target.value || 0))} />
+                      </div>
+                      <div style={{ gridColumn: "1 / -1" }}>
+                        <label style={{ display: "block", marginBottom: 6, color: "#64748b", fontSize: 13 }}>رابط الصورة</label>
+                        <input style={styles.input} value={item.image || ""} onChange={(e) => updateMenuItemField(item.id, "image", e.target.value)} placeholder="https://...jpg أو png" />
+                      </div>
+                      <div style={{ gridColumn: "1 / -1" }}>
+                        <label style={{ display: "block", marginBottom: 6, color: "#64748b", fontSize: 13 }}>وصف الصنف</label>
+                        <textarea style={{ ...styles.textarea, minHeight: 84 }} value={item.description || ""} onChange={(e) => updateMenuItemField(item.id, "description", e.target.value)} />
+                      </div>
                     </div>
                   </div>
                 ))}
               </div>
             </div>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
               <div style={styles.card}>
-                <div style={{ fontSize: 28, fontWeight: 800 }}>إعدادات المشروع</div>
-                <div style={{ color: "#64748b", marginTop: 6 }}>هذه الإعدادات تمثل ما يكون داخل الكوفي أو الفود ترك</div>
-                <div style={{ marginTop: 16 }}>
-                  <label style={{ display: "block", marginBottom: 8, color: "#64748b" }}>اسم الكوفي / التراك</label>
-                  <input style={styles.input} value={truckName} onChange={(e) => setTruckName(e.target.value)} />
-                </div>
-                <div style={{ border: "1px solid #e5e7eb", background: "#fafaf9", borderRadius: 18, padding: 16, marginTop: 16, color: "#475569", lineHeight: 1.8 }}>
-                  النظام الداخلي المرتبط بالمشروع هو عادةً:
-                  <br />• آيباد أو تابلت عند الكاشير
-                  <br />• شاشة للمطبخ
-                  <br />• شاشة استلام أو نداء
-                  <br />• أو لابتوب واحد يجمع كل الأوضاع إذا كان المكان صغيرًا
+                <SectionTitle icon={<Upload size={20} />} title="إضافة صنف جديد" sub="مع صورة ووصف ليظهر مباشرة في المنيو" />
+                <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 18 }}>
+                  <input style={styles.input} value={newItemName} onChange={(e) => setNewItemName(e.target.value)} placeholder="اسم الصنف" />
+                  <input style={styles.input} value={newItemCategory} onChange={(e) => setNewItemCategory(e.target.value)} placeholder="التصنيف" />
+                  <input style={styles.input} value={newItemPrice} onChange={(e) => setNewItemPrice(e.target.value)} placeholder="السعر" />
+                  <input style={styles.input} value={newItemImage} onChange={(e) => setNewItemImage(e.target.value)} placeholder="رابط الصورة" />
+                  <textarea style={styles.textarea} value={newItemDescription} onChange={(e) => setNewItemDescription(e.target.value)} placeholder="وصف الصنف" />
+                  <button style={{ ...styles.button, background: primaryColor }} onClick={addMenuItem}>إضافة إلى المنيو</button>
                 </div>
               </div>
 
               <div style={styles.card}>
-                <div style={{ fontSize: 28, fontWeight: 800, marginBottom: 16 }}>إضافة صنف جديد</div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                  <input style={styles.input} value={newItemName} onChange={(e) => setNewItemName(e.target.value)} placeholder="اسم الصنف" />
-                  <input style={styles.input} value={newItemCategory} onChange={(e) => setNewItemCategory(e.target.value)} placeholder="التصنيف" />
-                  <input style={styles.input} value={newItemPrice} onChange={(e) => setNewItemPrice(e.target.value)} placeholder="السعر" />
-                  <button style={styles.button} onClick={addMenuItem}>إضافة إلى المنيو</button>
+                <SectionTitle icon={<ImageIcon size={20} />} title="ملاحظات مهمة" sub="إدارة الصور حاليًا تعتمد على روابط الصور" />
+                <div style={{ marginTop: 18, color: "#475569", lineHeight: 2 }}>
+                  • تستطيع إضافة أو تغيير صورة أي صنف من داخل الإدارة عبر وضع رابط الصورة. <br />
+                  • تستطيع تغيير الشعار والألوان واسم البراند من داخل نفس الصفحة. <br />
+                  • كل صنف في طلب العميل له الآن ملاحظاته الخاصة التي تظهر للإدارة والمطبخ. <br />
+                  • المرحلة التالية إذا أردتها: رفع الصور مباشرة من جهازك إلى Firebase Storage بدل استخدام روابط فقط.
                 </div>
               </div>
             </div>
           </div>
         )}
-
-        <div style={{ ...styles.card, background: "#0f0f0f", color: "white", marginTop: 24 }}>
-          <div style={{ fontSize: 28, fontWeight: 800, marginBottom: 12 }}>ما الذي أصبح حقيقيًا الآن؟</div>
-          <div style={{ color: "rgba(255,255,255,0.8)", lineHeight: 2 }}>
-            1) المنيو الآن من قاعدة البيانات. <br />
-            2) الطلبات تُرسل فعلًا إلى Firebase. <br />
-            3) شاشة الكاشير والمطبخ والاستلام تتحدث لحظيًا. <br />
-            4) تغيير الحالة يُحفظ مباشرة. <br />
-            5) الخطوة التالية هي ربط واتساب أو SMS عند الجاهزية.
-          </div>
-        </div>
       </div>
     </div>
   );
 }
-
-
