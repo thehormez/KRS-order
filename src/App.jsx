@@ -44,14 +44,86 @@ const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 const defaultMenu = [
-  { name: "سبانيش لاتيه", category: "القهوة", price: 18, available: true, prepTime: 4 },
-  { name: "آيس لاتيه", category: "القهوة", price: 16, available: true, prepTime: 3 },
-  { name: "برغر لحم", category: "الوجبات", price: 28, available: true, prepTime: 9 },
-  { name: "برغر دجاج", category: "الوجبات", price: 25, available: true, prepTime: 8 },
-  { name: "بطاطس", category: "الإضافات", price: 12, available: true, prepTime: 4 },
-  { name: "كرك", category: "المشروبات", price: 8, available: false, prepTime: 3 },
-  { name: "ماء", category: "المشروبات", price: 3, available: true, prepTime: 1 },
-  { name: "شاورما بوكس", category: "الوجبات", price: 24, available: true, prepTime: 7 },
+  {
+    name: "سبانيش لاتيه",
+    category: "القهوة",
+    price: 18,
+    available: true,
+    prepTime: 4,
+    image:
+      "https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&w=900&q=80",
+    description: "قهوة مثلجة بحليب غني ولمسة كراميل ناعمة.",
+  },
+  {
+    name: "آيس لاتيه",
+    category: "القهوة",
+    price: 16,
+    available: true,
+    prepTime: 3,
+    image:
+      "https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=900&q=80",
+    description: "إسبريسو بارد مع حليب طازج وطعم متوازن.",
+  },
+  {
+    name: "برغر لحم",
+    category: "الوجبات",
+    price: 28,
+    available: true,
+    prepTime: 9,
+    image:
+      "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=900&q=80",
+    description: "برغر لحم طازج مع جبن وصوص خاص وخبز محمص.",
+  },
+  {
+    name: "برغر دجاج",
+    category: "الوجبات",
+    price: 25,
+    available: true,
+    prepTime: 8,
+    image:
+      "https://images.unsplash.com/photo-1606755962773-d324e0a13086?auto=format&fit=crop&w=900&q=80",
+    description: "برغر دجاج مقرمش مع خس وصوص خفيف.",
+  },
+  {
+    name: "بطاطس",
+    category: "الإضافات",
+    price: 12,
+    available: true,
+    prepTime: 4,
+    image:
+      "https://images.unsplash.com/photo-1576107232684-1279f390859f?auto=format&fit=crop&w=900&q=80",
+    description: "بطاطس ذهبية مقرمشة تقدم ساخنة.",
+  },
+  {
+    name: "كرك",
+    category: "المشروبات",
+    price: 8,
+    available: false,
+    prepTime: 3,
+    image:
+      "https://images.unsplash.com/photo-1571934811356-5cc061b6821f?auto=format&fit=crop&w=900&q=80",
+    description: "شاي كرك بنكهة غنية وتوابل مميزة.",
+  },
+  {
+    name: "ماء",
+    category: "المشروبات",
+    price: 3,
+    available: true,
+    prepTime: 1,
+    image:
+      "https://images.unsplash.com/photo-1564419439244-61f879dd0c0d?auto=format&fit=crop&w=900&q=80",
+    description: "مياه باردة ومنعشة.",
+  },
+  {
+    name: "شاورما بوكس",
+    category: "الوجبات",
+    price: 24,
+    available: true,
+    prepTime: 7,
+    image:
+      "https://images.unsplash.com/photo-1529006557810-274b9b2fc783?auto=format&fit=crop&w=900&q=80",
+    description: "شاورما دجاج مع بطاطس وصوص ثوم.",
+  },
 ];
 
 const statusMap = {
@@ -83,7 +155,7 @@ const styles = {
     padding: 16,
   },
   hero: {
-    background: "#111111",
+    background: "linear-gradient(135deg, #111111 0%, #1f1f1f 55%, #2c2c2c 100%)",
     color: "white",
     borderRadius: 28,
     padding: 24,
@@ -135,6 +207,40 @@ const styles = {
     boxSizing: "border-box",
     resize: "vertical",
   },
+  customerMenuGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
+    gap: 18,
+  },
+  menuCard: {
+    border: "1px solid #ececec",
+    borderRadius: 26,
+    overflow: "hidden",
+    background: "white",
+    boxShadow: "0 10px 25px rgba(0,0,0,0.05)",
+  },
+  menuImage: {
+    width: "100%",
+    height: 180,
+    objectFit: "cover",
+    display: "block",
+  },
+  categoryChip: {
+    display: "inline-flex",
+    alignItems: "center",
+    padding: "8px 14px",
+    borderRadius: 999,
+    background: "#f5f5f4",
+    border: "1px solid #e7e5e4",
+    fontSize: 13,
+    fontWeight: 700,
+    cursor: "pointer",
+  },
+  categoryChipActive: {
+    background: "#111111",
+    color: "white",
+    border: "1px solid #111111",
+  },
 };
 
 function SectionTitle({ icon, title, sub }) {
@@ -159,16 +265,12 @@ function MetricCard({ label, value }) {
 }
 
 export default function App() {
-  const getModeFromURL = () => {
-  const params = new URLSearchParams(window.location.search);
-  return params.get("mode") || "customer";
-};
-
-const [mode, setMode] = useState(getModeFromURL());
+  const [mode, setMode] = useState("customer");
   const [menu, setMenu] = useState([]);
   const [orders, setOrders] = useState([]);
   const [cart, setCart] = useState([]);
   const [search, setSearch] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("الكل");
   const [customerName, setCustomerName] = useState("");
   const [phone, setPhone] = useState("");
   const [notes, setNotes] = useState("");
@@ -235,12 +337,18 @@ const [mode, setMode] = useState(getModeFromURL());
     };
   }, []);
 
+  const categories = useMemo(() => {
+    const cats = Array.from(new Set(menu.map((item) => item.category).filter(Boolean)));
+    return ["الكل", ...cats];
+  }, [menu]);
+
   const availableMenu = useMemo(() => {
     return menu.filter((item) => {
       const matchesSearch = item.name?.includes(search) || item.category?.includes(search);
-      return item.available && matchesSearch;
+      const matchesCategory = selectedCategory === "الكل" || item.category === selectedCategory;
+      return item.available && matchesSearch && matchesCategory;
     });
-  }, [menu, search]);
+  }, [menu, search, selectedCategory]);
 
   const cartTotal = useMemo(() => {
     return cart.reduce((sum, item) => sum + Number(item.price) * item.qty, 0);
@@ -394,13 +502,13 @@ const [mode, setMode] = useState(getModeFromURL());
 
         <div style={{ ...styles.card, marginBottom: 24 }}>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            {mode !== "customer" && [
-  ["customer", "العميل", <QrCode size={16} />],
-  ["cashier", "الاستقبال", <LayoutDashboard size={16} />],
-  ["kitchen", "المطبخ", <ChefHat size={16} />],
-  ["pickup", "الاستلام", <Bell size={16} />],
-  ["admin", "الإدارة", <Settings size={16} />],
-].map(([value, label, icon]) => (
+            {[
+              ["customer", "العميل", <QrCode size={16} />],
+              ["cashier", "الاستقبال", <LayoutDashboard size={16} />],
+              ["kitchen", "المطبخ", <ChefHat size={16} />],
+              ["pickup", "الاستلام", <Bell size={16} />],
+              ["admin", "الإدارة", <Settings size={16} />],
+            ].map(([value, label, icon]) => (
               <button
                 key={String(value)}
                 onClick={() => setMode(value)}
@@ -423,47 +531,100 @@ const [mode, setMode] = useState(getModeFromURL());
         {mode === "customer" && (
           <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 24 }}>
             <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-              <div style={styles.card}>
-                <SectionTitle icon={<Store size={20} />} title="صفحة العميل من QR" sub="هذه الصفحة يفتحها العميل من الباركود، والطلب يذهب مباشرة إلى Firebase" />
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginTop: 20 }}>
-                  <div>
-                    <label style={{ display: "block", marginBottom: 8, color: "#64748b" }}>اسم العميل</label>
-                    <input style={styles.input} value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="اكتب اسمك" />
-                  </div>
-                  <div>
-                    <label style={{ display: "block", marginBottom: 8, color: "#64748b" }}>رقم الهاتف</label>
-                    <input style={styles.input} value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="05XXXXXXXX" />
-                  </div>
-                  <div style={{ gridColumn: "1 / -1" }}>
-                    <label style={{ display: "block", marginBottom: 8, color: "#64748b" }}>ملاحظات الطلب</label>
-                    <textarea style={styles.textarea} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="مثال: بدون ثلج / صوص زيادة / بدون بصل" />
-                  </div>
-                  <div style={{ gridColumn: "1 / -1", display: "flex", justifyContent: "space-between", alignItems: "center", border: "1px solid #e5e7eb", background: "#fafaf9", borderRadius: 18, padding: 16 }}>
+              <div style={{ ...styles.card, padding: 0, overflow: "hidden" }}>
+                <div style={{
+                  background: "linear-gradient(135deg, #111111 0%, #262626 100%)",
+                  color: "white",
+                  padding: 24,
+                }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
                     <div>
-                      <div style={{ fontWeight: 700 }}>إشعار العميل عند الجاهزية</div>
-                      <div style={{ color: "#64748b", fontSize: 14, marginTop: 4 }}>نربطها لاحقًا مع واتساب أو SMS</div>
+                      <div style={{ display: "inline-flex", gap: 8, alignItems: "center", background: "rgba(255,255,255,0.1)", padding: "8px 12px", borderRadius: 999, fontSize: 13 }}>
+                        <Store size={15} />
+                        {truckName}
+                      </div>
+                      <h2 style={{ margin: "14px 0 8px", fontSize: 34 }}>اطلب مباشرة من المنيو</h2>
+                      <p style={{ margin: 0, color: "rgba(255,255,255,0.78)", lineHeight: 1.8 }}>
+                        اختر طلبك، أضفه إلى السلة، ثم أدخل اسمك ورقمك وسيصل طلبك مباشرة إلى نظام الكوفي أو الفود ترك.
+                      </p>
                     </div>
-                    <input type="checkbox" checked={notifyCustomer} onChange={(e) => setNotifyCustomer(e.target.checked)} />
+                    <div style={{ minWidth: 220, background: "rgba(255,255,255,0.08)", borderRadius: 22, padding: 18 }}>
+                      <div style={{ fontSize: 13, color: "rgba(255,255,255,0.72)" }}>مدة تجهيز تقريبية</div>
+                      <div style={{ fontSize: 28, fontWeight: 800, marginTop: 8 }}>5 - 12 دقيقة</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ padding: 20 }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                    <div>
+                      <label style={{ display: "block", marginBottom: 8, color: "#64748b" }}>اسم العميل</label>
+                      <input style={styles.input} value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="اكتب اسمك" />
+                    </div>
+                    <div>
+                      <label style={{ display: "block", marginBottom: 8, color: "#64748b" }}>رقم الهاتف</label>
+                      <input style={styles.input} value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="05XXXXXXXX" />
+                    </div>
+                    <div style={{ gridColumn: "1 / -1" }}>
+                      <label style={{ display: "block", marginBottom: 8, color: "#64748b" }}>ملاحظات الطلب</label>
+                      <textarea style={styles.textarea} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="مثال: بدون ثلج / صوص زيادة / بدون بصل" />
+                    </div>
                   </div>
                 </div>
               </div>
 
               <div style={styles.card}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 800, fontSize: 28, marginBottom: 6 }}>
-                  <ClipboardList size={20} /> المنيو
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "center", flexWrap: "wrap", marginBottom: 18 }}>
+                  <div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 800, fontSize: 28, marginBottom: 6 }}>
+                      <ClipboardList size={20} /> المنيو
+                    </div>
+                    <div style={{ color: "#64748b" }}>واجهة عميل احترافية تعرض الأصناف مع صورها ووصف مختصر.</div>
+                  </div>
+                  <div style={{ minWidth: 260 }}>
+                    <input style={styles.input} value={search} onChange={(e) => setSearch(e.target.value)} placeholder="ابحث في المنيو" />
+                  </div>
                 </div>
-                <div style={{ color: "#64748b", marginBottom: 16 }}>المنيو الآن يُسحب من قاعدة البيانات ويمكن تعديله من لوحة الإدارة</div>
-                <input style={{ ...styles.input, marginBottom: 16 }} value={search} onChange={(e) => setSearch(e.target.value)} placeholder="ابحث في المنيو" />
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 20 }}>
+                  {categories.map((category) => (
+                    <button
+                      key={category}
+                      onClick={() => setSelectedCategory(category)}
+                      style={{
+                        ...styles.categoryChip,
+                        ...(selectedCategory === category ? styles.categoryChipActive : {}),
+                      }}
+                    >
+                      {category}
+                    </button>
+                  ))}
+                </div>
+
+                <div style={styles.customerMenuGrid}>
                   {availableMenu.map((item) => (
-                    <div key={item.id} style={{ border: "1px solid #e5e7eb", borderRadius: 24, padding: 16, display: "flex", justifyContent: "space-between", gap: 12 }}>
-                      <div>
-                        <div style={{ fontSize: 20, fontWeight: 800 }}>{item.name}</div>
-                        <div style={{ color: "#64748b", marginTop: 6 }}>{item.category}</div>
-                        <div style={{ color: "#94a3b8", marginTop: 6 }}>وقت تحضير تقريبي: {item.prepTime} دقائق</div>
-                        <div style={{ fontWeight: 700, marginTop: 8 }}>{money(item.price)}</div>
+                    <div key={item.id} style={styles.menuCard}>
+                      <img
+                        src={item.image || "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=900&q=80"}
+                        alt={item.name}
+                        style={styles.menuImage}
+                      />
+                      <div style={{ padding: 16 }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
+                          <div>
+                            <div style={{ fontSize: 20, fontWeight: 800 }}>{item.name}</div>
+                            <div style={{ color: "#64748b", marginTop: 6 }}>{item.category}</div>
+                          </div>
+                          <div style={{ fontWeight: 800, fontSize: 16 }}>{money(item.price)}</div>
+                        </div>
+                        <div style={{ color: "#6b7280", marginTop: 10, lineHeight: 1.7, minHeight: 48 }}>
+                          {item.description || "صنف مميز من قائمة الكوفي أو التراك."}
+                        </div>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 14 }}>
+                          <div style={{ color: "#94a3b8", fontSize: 13 }}>وقت تحضير: {item.prepTime} دقائق</div>
+                          <button style={styles.button} onClick={() => addToCart(item)}>إضافة</button>
+                        </div>
                       </div>
-                      <button style={styles.button} onClick={() => addToCart(item)}>إضافة</button>
                     </div>
                   ))}
                 </div>
@@ -495,13 +656,20 @@ const [mode, setMode] = useState(getModeFromURL());
                       </div>
                     ))
                   )}
+                  <div style={{ border: "1px solid #e5e7eb", background: "#fafaf9", borderRadius: 18, padding: 16, display: "flex", justifyContent: "space-between" }}>
+                    <span>إشعار عند الجاهزية</span>
+                    <input type="checkbox" checked={notifyCustomer} onChange={(e) => setNotifyCustomer(e.target.checked)} />
+                  </div>
                   <div style={{ background: "#111111", color: "white", borderRadius: 18, padding: 16, display: "flex", justifyContent: "space-between", fontWeight: 800, fontSize: 18 }}>
                     <span>الإجمالي</span>
                     <span>{money(cartTotal)}</span>
                   </div>
-                  <button style={{ ...styles.button, opacity: isSaving ? 0.7 : 1 }} onClick={placeOrder} disabled={!customerName || !phone || cart.length === 0 || isSaving}>
-                    {isSaving ? "جاري إرسال الطلب..." : "إرسال الطلب إلى النظام"}
+                  <button style={{ ...styles.button, opacity: isSaving ? 0.7 : 1, width: "100%" }} onClick={placeOrder} disabled={!customerName || !phone || cart.length === 0 || isSaving}>
+                    {isSaving ? "جاري إرسال الطلب..." : "تأكيد وإرسال الطلب"}
                   </button>
+                  <div style={{ color: "#64748b", lineHeight: 1.8, fontSize: 14 }}>
+                    بعد إرسال الطلب سيصل مباشرة إلى الكاشير والمطبخ داخل النظام، وعند تجهيز الطلب يمكن التواصل مع العميل.
+                  </div>
                 </div>
               </div>
             </div>
@@ -639,4 +807,5 @@ const [mode, setMode] = useState(getModeFromURL());
     </div>
   );
 }
+
 
