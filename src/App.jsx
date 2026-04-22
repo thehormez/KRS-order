@@ -146,6 +146,8 @@ const defaultBrand = {
   heroTitle: "اطلب مباشرة من المنيو",
   heroSubtitle:
     "امسح الباركود، اختر طلبك، ثم أرسل الطلب ليصل مباشرة إلى نظام الكوفي أو الفود ترك.",
+  enableDarkMode: true,
+  defaultTheme: "light",
 };
 
 const defaultRolePasswords = {
@@ -187,6 +189,81 @@ function getCreatedAtDate(order) {
 function safeIncludes(v, q) {
   return String(v || "").toLowerCase().includes(String(q || "").toLowerCase());
 }
+
+const translations = {
+  ar: {
+    orderDirect: "اطلب مباشرة من المنيو",
+    cart: "السلة",
+    menu: "المنيو",
+    searchMenu: "ابحث في المنيو",
+    add: "إضافة",
+    prepTime: "وقت التحضير",
+    minutes: "دقائق",
+    emptyCart: "السلة فارغة. اختر أصنافك من المنيو.",
+    notifyReady: "إشعار عند الجاهزية",
+    total: "الإجمالي",
+    continueCheckout: "متابعة إلى تأكيد الطلب",
+    confirmOrderData: "تأكيد بيانات الطلب",
+    customerName: "اسم العميل",
+    phone: "رقم الهاتف",
+    generalNotes: "ملاحظات عامة على الطلب",
+    back: "رجوع",
+    confirmSend: "تأكيد وإرسال الطلب",
+    sending: "جاري إرسال الطلب...",
+    paymentMethod: "طريقة الدفع",
+    applePay: "Apple Pay",
+    card: "بطاقة",
+    cash: "كاش",
+    payOnPickup: "عند الاستلام",
+    itemNote: "ملاحظات هذا الصنف",
+    theme: "الثيم",
+    light: "نهاري",
+    dark: "ليلي",
+    language: "اللغة",
+    arabic: "العربية",
+    english: "English",
+    readyTime: "مدة تجهيز تقريبية",
+    orderHint: "بعد إرسال الطلب سيصل مباشرة إلى الكاشير والمطبخ داخل النظام، وعند تجهيز الطلب يمكن التواصل مع العميل.",
+    descriptionFallback: "صنف مميز من قائمة الكوفي أو التراك.",
+    customerPageSubtitle: "واجهة عميل متجاوبة ومناسبة للجوالات مثل الآيفون.",
+  },
+  en: {
+    orderDirect: "Order directly from the menu",
+    cart: "Cart",
+    menu: "Menu",
+    searchMenu: "Search menu",
+    add: "Add",
+    prepTime: "Prep time",
+    minutes: "mins",
+    emptyCart: "Your cart is empty. Choose items from the menu.",
+    notifyReady: "Notify when ready",
+    total: "Total",
+    continueCheckout: "Continue to checkout",
+    confirmOrderData: "Confirm order details",
+    customerName: "Customer name",
+    phone: "Phone number",
+    generalNotes: "General order notes",
+    back: "Back",
+    confirmSend: "Confirm and send",
+    sending: "Sending order...",
+    paymentMethod: "Payment method",
+    applePay: "Apple Pay",
+    card: "Card",
+    cash: "Cash",
+    payOnPickup: "Pay on pickup",
+    itemNote: "Item notes",
+    theme: "Theme",
+    light: "Light",
+    dark: "Dark",
+    language: "Language",
+    arabic: "Arabic",
+    english: "English",
+    readyTime: "Estimated prep time",
+    orderHint: "After sending, the order goes directly to cashier and kitchen inside the system.",
+    descriptionFallback: "A featured item from the coffee truck menu.",
+    customerPageSubtitle: "A responsive customer page optimized for phones like iPhone.",
+  },
+};
 
 function useViewport() {
   const [width, setWidth] = useState(typeof window !== "undefined" ? window.innerWidth : 1440);
@@ -424,6 +501,10 @@ export default function App() {
   const [gateError, setGateError] = useState("");
   const [searchOrder, setSearchOrder] = useState("");
   const [reportDate, setReportDate] = useState(formatDateKey(new Date()));
+  const [language, setLanguage] = useState("ar");
+  const [theme, setTheme] = useState(defaultBrand.defaultTheme || "light");
+  const [paymentMethod, setPaymentMethod] = useState("apple_pay");
+  const t = translations[language] || translations.ar;
 
   const [roleSession, setRoleSession] = useState(() => {
     try {
@@ -588,6 +669,13 @@ export default function App() {
 
   const primaryColor = brand.primaryColor || "#111111";
   const accentColor = brand.accentColor || "#c8a96b";
+  const isDark = theme === "dark";
+  const pageBg = isDark
+    ? "radial-gradient(circle at top, rgba(200,169,107,0.12), transparent 18%), linear-gradient(to bottom, #0b0b0c, #121316, #0b0b0c)"
+    : "radial-gradient(circle at top, rgba(200,169,107,0.10), transparent 18%), linear-gradient(to bottom, #f8f6f1, #ffffff, #f3f4f6)";
+  const panelBg = isDark ? "rgba(18,18,20,0.92)" : "rgba(255,255,255,0.92)";
+  const textColor = isDark ? "#f8fafc" : "#0f172a";
+  const mutedColor = isDark ? "#cbd5e1" : "#64748b";
 
   const customerGridColumns = isMobile ? "1fr" : "minmax(0, 1.8fr) minmax(320px, 0.95fr)";
   const customerMenuGridColumns = isMobile ? "1fr" : isTablet ? "repeat(2, minmax(0, 1fr))" : "repeat(auto-fit, minmax(250px, 1fr))";
@@ -656,6 +744,7 @@ export default function App() {
         notes,
         items: cart,
         total: cartTotal,
+        paymentMethod,
         truckName: brand.brandName,
         notifyCustomer,
         status: "new",
@@ -668,6 +757,7 @@ export default function App() {
       setCustomerName("");
       setPhone("");
       setNotifyCustomer(true);
+      setPaymentMethod("apple_pay");
       setIsCheckoutOpen(false);
     } catch (error) {
       setErrorMessage("فشل إرسال الطلب إلى النظام الحقيقي");
@@ -819,7 +909,7 @@ export default function App() {
   const renderRoleGate = pendingMode && isProtectedMode(mode) && roleSession?.[pendingMode] !== true;
 
   return (
-    <div style={styles.app}>
+    <div style={{ ...styles.app, background: pageBg, color: textColor, direction: language === "ar" ? "rtl" : "ltr" }}>
       <div style={styles.container}>
         <div
           style={{
@@ -969,7 +1059,7 @@ export default function App() {
         {!renderRoleGate && mode === "customer" && (
           <div style={{ display: "grid", gridTemplateColumns: customerGridColumns, gap: 24, alignItems: "start" }}>
             <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-              <div style={{ ...styles.card, padding: 0, overflow: "hidden" }}>
+              <div style={{ ...styles.card, background: panelBg, color: textColor, padding: 0, overflow: "hidden" }}>
                 <div
                   style={{
                     background: `linear-gradient(135deg, ${primaryColor} 0%, #262626 72%, ${accentColor} 100%)`,
@@ -1018,32 +1108,42 @@ export default function App() {
                           <Store size={15} />
                           <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{brand.brandName}</span>
                         </div>
-                        <h2 style={{ margin: "14px 0 8px", fontSize: isMobile ? 24 : 34 }}>{brand.heroTitle}</h2>
+                        <h2 style={{ margin: "14px 0 8px", fontSize: isMobile ? 24 : 34 }}>{brand.heroTitle || t.orderDirect}</h2>
                         <p style={{ margin: 0, color: "rgba(255,255,255,0.78)", lineHeight: 1.8, maxWidth: 720, fontSize: isMobile ? 14 : 16 }}>
                           {brand.heroSubtitle}
                         </p>
                       </div>
                     </div>
-                    <div style={{ width: isMobile ? "100%" : 220, background: "rgba(255,255,255,0.08)", borderRadius: 22, padding: 18 }}>
-                      <div style={{ fontSize: 13, color: "rgba(255,255,255,0.72)" }}>مدة تجهيز تقريبية</div>
-                      <div style={{ fontSize: 28, fontWeight: 800, marginTop: 8 }}>5 - 12 دقيقة</div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 10, width: isMobile ? "100%" : 280 }}>
+                      <div style={{ background: "rgba(255,255,255,0.08)", borderRadius: 22, padding: 18 }}>
+                        <div style={{ fontSize: 13, color: "rgba(255,255,255,0.72)" }}>{t.readyTime}</div>
+                        <div style={{ fontSize: 28, fontWeight: 800, marginTop: 8 }}>5 - 12 {language === "ar" ? "دقيقة" : "min"}</div>
+                      </div>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                        <button onClick={() => setTheme(theme === "dark" ? "light" : "dark")} style={{ ...styles.buttonSecondary, background: "rgba(255,255,255,0.92)" }}>
+                          {t.theme}: {isDark ? t.dark : t.light}
+                        </button>
+                        <button onClick={() => setLanguage(language === "ar" ? "en" : "ar")} style={{ ...styles.buttonSecondary, background: "rgba(255,255,255,0.92)" }}>
+                          {t.language}: {language === "ar" ? t.arabic : t.english}
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
 
-              <div style={styles.card}>
+              <div style={{ ...styles.card, background: panelBg, color: textColor }}>
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: isMobile ? "stretch" : "center", flexWrap: "wrap", marginBottom: 18 }}>
                   <div>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 800, fontSize: isMobile ? 22 : 28, marginBottom: 6 }}>
-                      <ClipboardList size={20} /> المنيو
+                      <ClipboardList size={20} /> {t.menu}
                     </div>
-                    <div style={{ color: "#64748b" }}>واجهة عميل متجاوبة ومناسبة للجوالات مثل الآيفون.</div>
+                    <div style={{ color: mutedColor }}>{t.customerPageSubtitle}</div>
                   </div>
                   <div style={{ minWidth: isMobile ? "100%" : 260 }}>
                     <div style={{ position: "relative" }}>
-                      <Search size={16} style={{ position: "absolute", top: 14, right: 12, color: "#94a3b8" }} />
-                      <input style={{ ...styles.input, paddingRight: 36 }} value={search} onChange={(e) => setSearch(e.target.value)} placeholder="ابحث في المنيو" />
+                      <Search size={16} style={{ position: "absolute", top: 14, right: language === "ar" ? 12 : "auto", left: language === "en" ? 12 : "auto", color: "#94a3b8" }} />
+                      <input style={{ ...styles.input, paddingRight: language === "ar" ? 36 : 14, paddingLeft: language === "en" ? 36 : 14, background: isDark ? "#111827" : "#fff", color: textColor }} value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t.searchMenu} />
                     </div>
                   </div>
                 </div>
@@ -1055,8 +1155,8 @@ export default function App() {
                       onClick={() => setSelectedCategory(category)}
                       style={{
                         ...styles.categoryChip,
-                        background: selectedCategory === category ? primaryColor : "#f5f5f4",
-                        color: selectedCategory === category ? "white" : "#111111",
+                        background: selectedCategory === category ? primaryColor : isDark ? "#111827" : "#f5f5f4",
+                        color: selectedCategory === category ? "white" : textColor,
                         border: selectedCategory === category ? `1px solid ${primaryColor}` : "1px solid #e7e5e4",
                         whiteSpace: "nowrap",
                       }}
@@ -1068,7 +1168,7 @@ export default function App() {
 
                 <div style={{ display: "grid", gridTemplateColumns: customerMenuGridColumns, gap: 18 }}>
                   {availableMenu.map((item) => (
-                    <div key={item.id} style={styles.menuCard}>
+                    <div key={item.id} style={{ ...styles.menuCard, background: isDark ? "#111827" : "#fff", color: textColor }}>
                       <img
                         src={item.image || "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=900&q=80"}
                         alt={item.name}
@@ -1078,17 +1178,17 @@ export default function App() {
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
                           <div>
                             <div style={{ fontSize: isMobile ? 18 : 20, fontWeight: 800 }}>{item.name}</div>
-                            <div style={{ color: "#64748b", marginTop: 6 }}>{item.category}</div>
+                            <div style={{ color: mutedColor, marginTop: 6 }}>{item.category}</div>
                           </div>
                           <div style={{ fontWeight: 800, fontSize: 16, color: primaryColor, whiteSpace: "nowrap" }}>{money(item.price)}</div>
                         </div>
-                        <div style={{ color: "#6b7280", marginTop: 10, lineHeight: 1.7, minHeight: 48, fontSize: 14 }}>
-                          {item.description || "صنف مميز من قائمة الكوفي أو التراك."}
+                        <div style={{ color: mutedColor, marginTop: 10, lineHeight: 1.7, minHeight: 48, fontSize: 14 }}>
+                          {item.description || t.descriptionFallback}
                         </div>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 14, gap: 10 }}>
-                          <div style={{ color: "#94a3b8", fontSize: 13 }}>وقت التحضير: {item.prepTime} دقائق</div>
+                          <div style={{ color: mutedColor, fontSize: 13 }}>{t.prepTime}: {item.prepTime} {t.minutes}</div>
                           <button style={{ ...styles.button, background: primaryColor, minWidth: 94 }} onClick={() => addToCart(item)}>
-                            إضافة
+                            {t.add}
                           </button>
                         </div>
                       </div>
@@ -1099,14 +1199,14 @@ export default function App() {
             </div>
 
             <div>
-              <div style={{ ...styles.card, position: isMobile ? "relative" : "sticky", top: 16 }}>
+              <div style={{ ...styles.card, background: panelBg, color: textColor, position: isMobile ? "relative" : "sticky", top: 16 }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, fontWeight: 800, fontSize: isMobile ? 22 : 28, marginBottom: 16 }}>
-                  <span style={{ display: "flex", alignItems: "center", gap: 8 }}><ShoppingCart size={20} /> السلة</span>
-                  <span style={{ fontSize: 14, color: "#64748b" }}>{cart.length} صنف</span>
+                  <span style={{ display: "flex", alignItems: "center", gap: 8 }}><ShoppingCart size={20} /> {t.cart}</span>
+                  <span style={{ fontSize: 14, color: mutedColor }}>{cart.length} {language === "ar" ? "صنف" : "item"}</span>
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                   {cart.length === 0 ? (
-                    <div style={{ border: "1px solid #e5e7eb", borderRadius: 18, padding: 16, color: "#64748b", background: "#fafaf9" }}>السلة فارغة. اختر أصنافك من المنيو.</div>
+                    <div style={{ border: "1px solid #e5e7eb", borderRadius: 18, padding: 16, color: mutedColor, background: isDark ? "#0f172a" : "#fafaf9" }}>{t.emptyCart}</div>
                   ) : (
                     cart.map((item) => (
                       <div key={item.id} style={{ border: "1px solid #e5e7eb", borderRadius: 18, padding: 16 }}>
@@ -1118,7 +1218,7 @@ export default function App() {
                             <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
                               <div style={{ minWidth: 0 }}>
                                 <div style={{ fontWeight: 700 }}>{item.name}</div>
-                                <div style={{ color: "#64748b", marginTop: 4 }}>{money(item.price * item.qty)}</div>
+                                <div style={{ color: mutedColor, marginTop: 4 }}>{money(item.price * item.qty)}</div>
                               </div>
                               <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                                 <button style={styles.buttonSecondary} onClick={() => updateQty(item.id, -1)}><Minus size={16} /></button>
@@ -1127,12 +1227,12 @@ export default function App() {
                               </div>
                             </div>
                             <div style={{ marginTop: 10 }}>
-                              <label style={{ display: "block", marginBottom: 6, color: "#64748b", fontSize: 13 }}>ملاحظات هذا الصنف</label>
+                              <label style={{ display: "block", marginBottom: 6, color: mutedColor, fontSize: 13 }}>{t.itemNote}</label>
                               <textarea
-                                style={{ ...styles.textarea, minHeight: 76 }}
+                                style={{ ...styles.textarea, minHeight: 76, background: isDark ? "#111827" : "#fff", color: textColor }}
                                 value={item.itemNote || ""}
                                 onChange={(e) => updateCartItemNote(item.id, e.target.value)}
-                                placeholder="مثال: بدون مخلل / زيادة ثلج / حار خفيف"
+                                placeholder={language === "ar" ? "مثال: بدون مخلل / زيادة ثلج / حار خفيف" : "Example: no pickles / extra ice / less spicy"}
                               />
                             </div>
                           </div>
@@ -1141,13 +1241,13 @@ export default function App() {
                     ))
                   )}
 
-                  <div style={{ border: "1px solid #e5e7eb", background: "#fafaf9", borderRadius: 18, padding: 16, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span>إشعار عند الجاهزية</span>
+                  <div style={{ border: "1px solid #e5e7eb", background: isDark ? "#0f172a" : "#fafaf9", borderRadius: 18, padding: 16, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span>{t.notifyReady}</span>
                     <input type="checkbox" checked={notifyCustomer} onChange={(e) => setNotifyCustomer(e.target.checked)} />
                   </div>
 
                   <div style={{ background: primaryColor, color: "white", borderRadius: 18, padding: 16, display: "flex", justifyContent: "space-between", fontWeight: 800, fontSize: 18 }}>
-                    <span>الإجمالي</span>
+                    <span>{t.total}</span>
                     <span>{money(cartTotal)}</span>
                   </div>
 
@@ -1157,38 +1257,64 @@ export default function App() {
                       onClick={() => setIsCheckoutOpen(true)}
                       disabled={cart.length === 0}
                     >
-                      متابعة إلى تأكيد الطلب
+                      {t.continueCheckout}
                     </button>
                   ) : (
-                    <div style={{ border: `1px solid ${accentColor}`, borderRadius: 18, padding: 16, background: "#fffdf8" }}>
-                      <div style={{ fontWeight: 800, marginBottom: 12, fontSize: 18 }}>تأكيد بيانات الطلب</div>
+                    <div style={{ border: `1px solid ${accentColor}`, borderRadius: 18, padding: 16, background: isDark ? "#111827" : "#fffdf8" }}>
+                      <div style={{ fontWeight: 800, marginBottom: 12, fontSize: 18 }}>{t.confirmOrderData}</div>
                       <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 12 }}>
                         <div>
-                          <label style={{ display: "block", marginBottom: 8, color: "#64748b" }}>اسم العميل</label>
-                          <input style={styles.input} value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="اكتب اسمك" />
+                          <label style={{ display: "block", marginBottom: 8, color: mutedColor }}>{t.customerName}</label>
+                          <input style={{ ...styles.input, background: isDark ? "#0f172a" : "#fff", color: textColor }} value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder={language === "ar" ? "اكتب اسمك" : "Enter your name"} />
                         </div>
                         <div>
-                          <label style={{ display: "block", marginBottom: 8, color: "#64748b" }}>رقم الهاتف</label>
-                          <input style={styles.input} value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="05XXXXXXXX" />
+                          <label style={{ display: "block", marginBottom: 8, color: mutedColor }}>{t.phone}</label>
+                          <input style={{ ...styles.input, background: isDark ? "#0f172a" : "#fff", color: textColor }} value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="05XXXXXXXX" />
                         </div>
                         <div>
-                          <label style={{ display: "block", marginBottom: 8, color: "#64748b" }}>ملاحظات عامة على الطلب</label>
-                          <textarea style={{ ...styles.textarea, minHeight: 90 }} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="مثال: أتواجد أمام السيارة البيضاء / بدون أدوات / وقت الاستلام..." />
+                          <label style={{ display: "block", marginBottom: 8, color: mutedColor }}>{t.paymentMethod}</label>
+                          <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4, 1fr)", gap: 10 }}>
+                            {[
+                              ["apple_pay", t.applePay],
+                              ["card", t.card],
+                              ["cash", t.cash],
+                              ["pickup", t.payOnPickup],
+                            ].map(([value, label]) => (
+                              <button
+                                key={value}
+                                type="button"
+                                onClick={() => setPaymentMethod(value)}
+                                style={{
+                                  ...styles.buttonSecondary,
+                                  background: paymentMethod === value ? primaryColor : isDark ? "#0f172a" : "#fff",
+                                  color: paymentMethod === value ? "#fff" : textColor,
+                                  border: paymentMethod === value ? `1px solid ${primaryColor}` : "1px solid #d1d5db",
+                                  padding: "12px 10px",
+                                }}
+                              >
+                                {label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                        <div>
+                          <label style={{ display: "block", marginBottom: 8, color: mutedColor }}>{t.generalNotes}</label>
+                          <textarea style={{ ...styles.textarea, minHeight: 90, background: isDark ? "#0f172a" : "#fff", color: textColor }} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder={language === "ar" ? "مثال: أتواجد أمام السيارة البيضاء / بدون أدوات / وقت الاستلام..." : "Example: I am near the white car / no utensils / pickup time..."} />
                         </div>
                       </div>
                       <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", gap: 10, marginTop: 14 }}>
                         <button style={{ ...styles.buttonSecondary, flex: 1 }} onClick={() => setIsCheckoutOpen(false)}>
-                          رجوع
+                          {t.back}
                         </button>
                         <button style={{ ...styles.button, background: primaryColor, flex: 1, opacity: isSaving ? 0.7 : 1 }} onClick={placeOrder} disabled={!customerName || !phone || cart.length === 0 || isSaving}>
-                          {isSaving ? "جاري إرسال الطلب..." : "تأكيد وإرسال الطلب"}
+                          {isSaving ? t.sending : t.confirmSend}
                         </button>
                       </div>
                     </div>
                   )}
 
-                  <div style={{ color: "#64748b", lineHeight: 1.8, fontSize: 14 }}>
-                    بعد إرسال الطلب سيصل مباشرة إلى الكاشير والمطبخ داخل النظام، وعند تجهيز الطلب يمكن التواصل مع العميل.
+                  <div style={{ color: mutedColor, lineHeight: 1.8, fontSize: 14 }}>
+                    {t.orderHint}
                   </div>
                 </div>
               </div>
