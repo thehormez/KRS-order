@@ -33,6 +33,7 @@ import {
   getDocs,
   setDoc,
 } from "firebase/firestore";
+import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDUJ-qIfHL-yZ_4cPXH_X0KMHAaCnrFZnk",
@@ -46,6 +47,7 @@ const firebaseConfig = {
 
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 const db = getFirestore(app);
+const storage = getStorage(app);
 
 const defaultMenu = [
   {
@@ -242,11 +244,6 @@ const styles = {
     fontWeight: 700,
     cursor: "pointer",
   },
-  categoryChipActive: {
-    background: "#111111",
-    color: "white",
-    border: "1px solid #111111",
-  },
 };
 
 function SectionTitle({ icon, title, sub }) {
@@ -294,6 +291,8 @@ export default function App() {
   const [newItemDescription, setNewItemDescription] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
@@ -308,7 +307,6 @@ export default function App() {
             });
           }
         }
-
         await setDoc(doc(db, "settings", "brand"), defaultBrand, { merge: true });
       } catch (error) {
         console.error(error);
@@ -387,9 +385,10 @@ export default function App() {
   const preparingOrders = orders.filter((o) => o.status === "preparing").length;
   const readyOrders = orders.filter((o) => o.status === "ready").length;
   const deliveredOrders = orders.filter((o) => o.status === "delivered").length;
-  const totalSales = orders
-    .filter((o) => o.status === "delivered")
-    .reduce((sum, o) => sum + Number(o.total || 0), 0);
+  const totalSales = orders.filter((o) => o.status === "delivered").reduce((sum, o) => sum + Number(o.total || 0), 0);
+
+  const primaryColor = brand.primaryColor || "#111111";
+  const accentColor = brand.accentColor || "#c8a96b";
 
   const addToCart = (item) => {
     setCart((prev) => {
@@ -419,13 +418,30 @@ export default function App() {
     setCart((prev) => prev.map((item) => (item.id === id ? { ...item, itemNote: value } : item)));
   };
 
+  const uploadImageAndSetUrl = async (file, onDone) => {
+    if (!file) return;
+    try {
+      setIsUploadingImage(true);
+      setErrorMessage("");
+      const fileName = `${Date.now()}-${file.name}`;
+      const storageRef = ref(storage, `menu-images/${fileName}`);
+      await uploadBytes(storageRef, file);
+      const downloadURL = await getDownloadURL(storageRef);
+      onDone(downloadURL);
+    } catch (error) {
+      setErrorMessage("فشل رفع الصورة إلى Firebase Storage");
+      console.error(error);
+    } finally {
+      setIsUploadingImage(false);
+    }
+  };
+
   const placeOrder = async () => {
     if (!customerName.trim() || !phone.trim() || cart.length === 0) return;
 
     try {
       setIsSaving(true);
       setErrorMessage("");
-
       const orderCount = await getDocs(collection(db, "orders"));
       const nextOrderNumber = 100 + orderCount.size + 1;
 
@@ -448,6 +464,7 @@ export default function App() {
       setCustomerName("");
       setPhone("");
       setNotifyCustomer(true);
+      setIsCheckoutOpen(false);
     } catch (error) {
       setErrorMessage("فشل إرسال الطلب إلى النظام الحقيقي");
       console.error(error);
@@ -497,7 +514,6 @@ export default function App() {
 
   const addMenuItem = async () => {
     if (!newItemName.trim() || !newItemCategory.trim() || !newItemPrice.trim()) return;
-
     try {
       setErrorMessage("");
       await addDoc(collection(db, "menu"), {
@@ -537,9 +553,6 @@ export default function App() {
     return orders;
   }, [orders, mode]);
 
-  const primaryColor = brand.primaryColor || "#111111";
-  const accentColor = brand.accentColor || "#c8a96b";
-
   return (
     <div style={styles.app}>
       <div style={styles.container}>
@@ -562,7 +575,7 @@ export default function App() {
                 </div>
                 <h1 style={{ fontSize: 46, margin: "16px 0 10px" }}>{brand.brandName}</h1>
                 <p style={{ color: "rgba(255,255,255,0.8)", lineHeight: 1.8, maxWidth: 760 }}>
-                  العميل يمسح QR، يدخل الاسم ورقم الهاتف، يطلب من المنيو، ثم يصل الطلب مباشرة إلى النظام الداخلي داخل الكوفي أو الفود ترك.
+                  العميل يمسح QR، يطلب من المنيو، ثم يصل الطلب مباشرة إلى النظام الداخلي داخل الكوفي أو الفود ترك.
                 </p>
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, flex: "1 1 420px" }}>
@@ -665,23 +678,6 @@ export default function App() {
                     </div>
                   </div>
                 </div>
-
-                <div style={{ padding: 20 }}>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-                    <div>
-                      <label style={{ display: "block", marginBottom: 8, color: "#64748b" }}>اسم العميل</label>
-                      <input style={styles.input} value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="اكتب اسمك" />
-                    </div>
-                    <div>
-                      <label style={{ display: "block", marginBottom: 8, color: "#64748b" }}>رقم الهاتف</label>
-                      <input style={styles.input} value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="05XXXXXXXX" />
-                    </div>
-                    <div style={{ gridColumn: "1 / -1" }}>
-                      <label style={{ display: "block", marginBottom: 8, color: "#64748b" }}>ملاحظات عامة على الطلب</label>
-                      <textarea style={styles.textarea} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="مثال: أتواجد أمام السيارة البيضاء / بدون أدوات / وقت الاستلام..." />
-                    </div>
-                  </div>
-                </div>
               </div>
 
               <div style={styles.card}>
@@ -704,9 +700,9 @@ export default function App() {
                       onClick={() => setSelectedCategory(category)}
                       style={{
                         ...styles.categoryChip,
-                        ...(selectedCategory === category
-                          ? { ...styles.categoryChipActive, background: primaryColor, border: `1px solid ${primaryColor}` }
-                          : {}),
+                        background: selectedCategory === category ? primaryColor : "#f5f5f4",
+                        color: selectedCategory === category ? "white" : "#111111",
+                        border: selectedCategory === category ? `1px solid ${primaryColor}` : "1px solid #e7e5e4",
                       }}
                     >
                       {category}
@@ -785,17 +781,53 @@ export default function App() {
                       </div>
                     ))
                   )}
+
                   <div style={{ border: "1px solid #e5e7eb", background: "#fafaf9", borderRadius: 18, padding: 16, display: "flex", justifyContent: "space-between" }}>
                     <span>إشعار عند الجاهزية</span>
                     <input type="checkbox" checked={notifyCustomer} onChange={(e) => setNotifyCustomer(e.target.checked)} />
                   </div>
+
                   <div style={{ background: primaryColor, color: "white", borderRadius: 18, padding: 16, display: "flex", justifyContent: "space-between", fontWeight: 800, fontSize: 18 }}>
                     <span>الإجمالي</span>
                     <span>{money(cartTotal)}</span>
                   </div>
-                  <button style={{ ...styles.button, background: primaryColor, opacity: isSaving ? 0.7 : 1, width: "100%" }} onClick={placeOrder} disabled={!customerName || !phone || cart.length === 0 || isSaving}>
-                    {isSaving ? "جاري إرسال الطلب..." : "تأكيد وإرسال الطلب"}
-                  </button>
+
+                  {!isCheckoutOpen ? (
+                    <button
+                      style={{ ...styles.button, background: primaryColor, width: "100%" }}
+                      onClick={() => setIsCheckoutOpen(true)}
+                      disabled={cart.length === 0}
+                    >
+                      متابعة إلى تأكيد الطلب
+                    </button>
+                  ) : (
+                    <div style={{ border: `1px solid ${accentColor}`, borderRadius: 18, padding: 16, background: "#fffdf8" }}>
+                      <div style={{ fontWeight: 800, marginBottom: 12, fontSize: 18 }}>تأكيد بيانات الطلب</div>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 12 }}>
+                        <div>
+                          <label style={{ display: "block", marginBottom: 8, color: "#64748b" }}>اسم العميل</label>
+                          <input style={styles.input} value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="اكتب اسمك" />
+                        </div>
+                        <div>
+                          <label style={{ display: "block", marginBottom: 8, color: "#64748b" }}>رقم الهاتف</label>
+                          <input style={styles.input} value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="05XXXXXXXX" />
+                        </div>
+                        <div>
+                          <label style={{ display: "block", marginBottom: 8, color: "#64748b" }}>ملاحظات عامة على الطلب</label>
+                          <textarea style={{ ...styles.textarea, minHeight: 90 }} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="مثال: أتواجد أمام السيارة البيضاء / بدون أدوات / وقت الاستلام..." />
+                        </div>
+                      </div>
+                      <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
+                        <button style={{ ...styles.buttonSecondary, flex: 1 }} onClick={() => setIsCheckoutOpen(false)}>
+                          رجوع
+                        </button>
+                        <button style={{ ...styles.button, background: primaryColor, flex: 1, opacity: isSaving ? 0.7 : 1 }} onClick={placeOrder} disabled={!customerName || !phone || cart.length === 0 || isSaving}>
+                          {isSaving ? "جاري إرسال الطلب..." : "تأكيد وإرسال الطلب"}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
                   <div style={{ color: "#64748b", lineHeight: 1.8, fontSize: 14 }}>
                     بعد إرسال الطلب سيصل مباشرة إلى الكاشير والمطبخ داخل النظام، وعند تجهيز الطلب يمكن التواصل مع العميل.
                   </div>
@@ -933,7 +965,7 @@ export default function App() {
             </div>
 
             <div style={styles.card}>
-              <SectionTitle icon={<Package size={20} />} title="إدارة المنيو والصور" sub="تقدر الآن تعديل صورة كل صنف ورابطها ووصفها من داخل الموقع" />
+              <SectionTitle icon={<Package size={20} />} title="إدارة المنيو والصور" sub="تقدر الآن تعديل صورة كل صنف ورفعها مباشرة من الجهاز أو تعديل رابطها ووصفها" />
               <div style={{ marginTop: 20, display: "flex", flexDirection: "column", gap: 16 }}>
                 {menu.map((item) => (
                   <div key={item.id} style={{ border: "1px solid #e5e7eb", borderRadius: 24, padding: 16, display: "grid", gridTemplateColumns: "180px 1fr", gap: 16, alignItems: "start" }}>
@@ -966,6 +998,18 @@ export default function App() {
                       <div style={{ gridColumn: "1 / -1" }}>
                         <label style={{ display: "block", marginBottom: 6, color: "#64748b", fontSize: 13 }}>رابط الصورة</label>
                         <input style={styles.input} value={item.image || ""} onChange={(e) => updateMenuItemField(item.id, "image", e.target.value)} placeholder="https://...jpg أو png" />
+                        <div style={{ display: "flex", gap: 10, marginTop: 10, alignItems: "center" }}>
+                          <label style={{ ...styles.buttonSecondary, display: "inline-flex", alignItems: "center", gap: 8 }}>
+                            <Upload size={16} /> رفع صورة مباشرة
+                            <input
+                              type="file"
+                              accept="image/*"
+                              style={{ display: "none" }}
+                              onChange={(e) => uploadImageAndSetUrl(e.target.files?.[0], (url) => updateMenuItemField(item.id, "image", url))}
+                            />
+                          </label>
+                          {isUploadingImage ? <span style={{ color: "#64748b", fontSize: 13 }}>جاري الرفع...</span> : null}
+                        </div>
                       </div>
                       <div style={{ gridColumn: "1 / -1" }}>
                         <label style={{ display: "block", marginBottom: 6, color: "#64748b", fontSize: 13 }}>وصف الصنف</label>
@@ -985,18 +1029,30 @@ export default function App() {
                   <input style={styles.input} value={newItemCategory} onChange={(e) => setNewItemCategory(e.target.value)} placeholder="التصنيف" />
                   <input style={styles.input} value={newItemPrice} onChange={(e) => setNewItemPrice(e.target.value)} placeholder="السعر" />
                   <input style={styles.input} value={newItemImage} onChange={(e) => setNewItemImage(e.target.value)} placeholder="رابط الصورة" />
+                  <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                    <label style={{ ...styles.buttonSecondary, display: "inline-flex", alignItems: "center", gap: 8 }}>
+                      <Upload size={16} /> تحميل الصورة مباشرة
+                      <input
+                        type="file"
+                        accept="image/*"
+                        style={{ display: "none" }}
+                        onChange={(e) => uploadImageAndSetUrl(e.target.files?.[0], setNewItemImage)}
+                      />
+                    </label>
+                    {isUploadingImage ? <span style={{ color: "#64748b", fontSize: 13 }}>جاري رفع الصورة...</span> : null}
+                  </div>
                   <textarea style={styles.textarea} value={newItemDescription} onChange={(e) => setNewItemDescription(e.target.value)} placeholder="وصف الصنف" />
                   <button style={{ ...styles.button, background: primaryColor }} onClick={addMenuItem}>إضافة إلى المنيو</button>
                 </div>
               </div>
 
               <div style={styles.card}>
-                <SectionTitle icon={<ImageIcon size={20} />} title="ملاحظات مهمة" sub="إدارة الصور حاليًا تعتمد على روابط الصور" />
+                <SectionTitle icon={<ImageIcon size={20} />} title="الذي تغيّر الآن" sub="واجهة العميل والإدارة صارت أقرب لنسخة تجارية حقيقية" />
                 <div style={{ marginTop: 18, color: "#475569", lineHeight: 2 }}>
-                  • تستطيع إضافة أو تغيير صورة أي صنف من داخل الإدارة عبر وضع رابط الصورة. <br />
-                  • تستطيع تغيير الشعار والألوان واسم البراند من داخل نفس الصفحة. <br />
-                  • كل صنف في طلب العميل له الآن ملاحظاته الخاصة التي تظهر للإدارة والمطبخ. <br />
-                  • المرحلة التالية إذا أردتها: رفع الصور مباشرة من جهازك إلى Firebase Storage بدل استخدام روابط فقط.
+                  • العميل لا يرى الاسم ورقم الهاتف في الواجهة الرئيسية، بل فقط عند الضغط على متابعة إلى تأكيد الطلب. <br />
+                  • كل صنف في السلة له ملاحظاته الخاصة التي تظهر للإدارة والمطبخ. <br />
+                  • الإدارة تستطيع رفع الصور مباشرة من الجهاز إلى Firebase Storage أو لصق رابط الصورة. <br />
+                  • الإدارة تستطيع تغيير اسم البراند، الشعار، والألوان من داخل الموقع.
                 </div>
               </div>
             </div>
