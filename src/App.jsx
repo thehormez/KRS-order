@@ -18,6 +18,12 @@ import {
   Image as ImageIcon,
   Palette,
   Upload,
+  Lock,
+  LogOut,
+  Receipt,
+  Printer,
+  ShieldCheck,
+  Search,
 } from "lucide-react";
 import { initializeApp, getApps, getApp } from "firebase/app";
 import {
@@ -135,11 +141,18 @@ const defaultMenu = [
 const defaultBrand = {
   brandName: "KRS Coffee Truck",
   logoUrl: "",
-  primaryColor: "#111111",
+  primaryColor: "#0f0f10",
   accentColor: "#c8a96b",
   heroTitle: "اطلب مباشرة من المنيو",
   heroSubtitle:
     "امسح الباركود، اختر طلبك، ثم أرسل الطلب ليصل مباشرة إلى نظام الكوفي أو الفود ترك.",
+};
+
+const defaultRolePasswords = {
+  admin: "1234",
+  cashier: "1111",
+  kitchen: "2222",
+  pickup: "3333",
 };
 
 const statusMap = {
@@ -157,25 +170,60 @@ function orderTime() {
   return new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
+function formatDateKey(dateInput) {
+  const d = dateInput ? new Date(dateInput) : new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function getCreatedAtDate(order) {
+  if (order?.createdAt?.toDate) return order.createdAt.toDate();
+  if (order?.createdAt?.seconds) return new Date(order.createdAt.seconds * 1000);
+  return null;
+}
+
+function safeIncludes(v, q) {
+  return String(v || "").toLowerCase().includes(String(q || "").toLowerCase());
+}
+
+function useViewport() {
+  const [width, setWidth] = useState(typeof window !== "undefined" ? window.innerWidth : 1440);
+  useEffect(() => {
+    const onResize = () => setWidth(window.innerWidth);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+  return {
+    width,
+    isMobile: width <= 768,
+    isTablet: width > 768 && width <= 1024,
+  };
+}
+
 const styles = {
   app: {
     minHeight: "100vh",
-    background: "linear-gradient(to bottom, #f5f5f4, #ffffff, #f5f5f4)",
+    background:
+      "radial-gradient(circle at top, rgba(200,169,107,0.10), transparent 18%), linear-gradient(to bottom, #f8f6f1, #ffffff, #f3f4f6)",
     color: "#0f172a",
     direction: "rtl",
     fontFamily: "Arial, sans-serif",
   },
   container: {
-    maxWidth: 1280,
+    maxWidth: 1360,
     margin: "0 auto",
     padding: 16,
   },
   card: {
-    background: "white",
+    background: "rgba(255,255,255,0.92)",
+    backdropFilter: "blur(12px)",
+    WebkitBackdropFilter: "blur(12px)",
     borderRadius: 28,
     padding: 20,
-    boxShadow: "0 4px 18px rgba(0,0,0,0.06)",
-    border: "1px solid #e5e7eb",
+    boxShadow: "0 10px 35px rgba(15, 23, 42, 0.07)",
+    border: "1px solid rgba(226,232,240,0.9)",
   },
   button: {
     background: "#111111",
@@ -204,6 +252,7 @@ const styles = {
     border: "1px solid #d1d5db",
     fontSize: 14,
     boxSizing: "border-box",
+    background: "#fff",
   },
   textarea: {
     width: "100%",
@@ -214,18 +263,14 @@ const styles = {
     fontSize: 14,
     boxSizing: "border-box",
     resize: "vertical",
-  },
-  customerMenuGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
-    gap: 18,
+    background: "#fff",
   },
   menuCard: {
     border: "1px solid #ececec",
     borderRadius: 26,
     overflow: "hidden",
     background: "white",
-    boxShadow: "0 10px 25px rgba(0,0,0,0.05)",
+    boxShadow: "0 14px 30px rgba(0,0,0,0.05)",
   },
   menuImage: {
     width: "100%",
@@ -258,22 +303,102 @@ function SectionTitle({ icon, title, sub }) {
   );
 }
 
-function MetricCard({ label, value }) {
+function MetricCard({ label, value, accent = "#111111" }) {
   return (
-    <div style={{ ...styles.card, borderRadius: 24, padding: 18 }}>
+    <div
+      style={{
+        ...styles.card,
+        borderRadius: 24,
+        padding: 18,
+        background: `linear-gradient(180deg, rgba(255,255,255,0.98), rgba(248,250,252,0.98))`,
+        borderTop: `4px solid ${accent}`,
+      }}
+    >
       <div style={{ color: "#64748b", fontSize: 14 }}>{label}</div>
       <div style={{ fontSize: 32, fontWeight: 800, marginTop: 8 }}>{value}</div>
     </div>
   );
 }
 
-const getModeFromURL = () => {
+function getModeFromURL() {
   const params = new URLSearchParams(window.location.search);
   return params.get("mode") || "customer";
-};
+}
+
+function isProtectedMode(mode) {
+  return ["admin", "cashier", "kitchen", "pickup"].includes(mode);
+}
+
+function modeTitle(mode) {
+  if (mode === "admin") return "الإدارة";
+  if (mode === "cashier") return "الاستقبال";
+  if (mode === "kitchen") return "المطبخ";
+  if (mode === "pickup") return "الاستلام";
+  return "العميل";
+}
+
+function printableReportHTML({ brandName, reportDate, sales, orderCount, deliveredCount, items }) {
+  const rows = items
+    .map(
+      (item, idx) => `
+      <tr>
+        <td>${idx + 1}</td>
+        <td>${item.name}</td>
+        <td>${item.qty}</td>
+        <td>${money(item.sales)}</td>
+      </tr>`
+    )
+    .join("");
+
+  return `
+  <html dir="rtl" lang="ar">
+    <head>
+      <meta charset="UTF-8" />
+      <title>تقرير المبيعات اليومية</title>
+      <style>
+        body{font-family:Arial,sans-serif;padding:32px;color:#111;background:#fff}
+        .head{border:1px solid #ddd;border-radius:18px;padding:20px;margin-bottom:20px}
+        h1,h2,p{margin:0 0 10px}
+        .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:20px 0}
+        .box{border:1px solid #ddd;border-radius:14px;padding:16px;background:#fafafa}
+        table{width:100%;border-collapse:collapse;margin-top:16px}
+        th,td{border:1px solid #ddd;padding:12px;text-align:right}
+        th{background:#f5f5f5}
+      </style>
+    </head>
+    <body>
+      <div class="head">
+        <h1>${brandName}</h1>
+        <p>تقرير المبيعات اليومية</p>
+        <p>التاريخ: ${reportDate}</p>
+      </div>
+      <div class="grid">
+        <div class="box"><strong>إجمالي المبيعات</strong><br/>${money(sales)}</div>
+        <div class="box"><strong>عدد الطلبات اليوم</strong><br/>${orderCount}</div>
+        <div class="box"><strong>الطلبات المسلّمة</strong><br/>${deliveredCount}</div>
+      </div>
+      <h2>الأصناف الأكثر مبيعاً</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>الصنف</th>
+            <th>الكمية</th>
+            <th>المبيعات</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows || '<tr><td colspan="4">لا توجد بيانات اليوم</td></tr>'}
+        </tbody>
+      </table>
+    </body>
+  </html>`;
+}
 
 export default function App() {
+  const { isMobile, isTablet, width } = useViewport();
   const [mode, setMode] = useState(getModeFromURL());
+  const [pendingMode, setPendingMode] = useState(null);
   const [menu, setMenu] = useState([]);
   const [orders, setOrders] = useState([]);
   const [cart, setCart] = useState([]);
@@ -284,6 +409,7 @@ export default function App() {
   const [notes, setNotes] = useState("");
   const [notifyCustomer, setNotifyCustomer] = useState(true);
   const [brand, setBrand] = useState(defaultBrand);
+  const [rolePasswords, setRolePasswords] = useState(defaultRolePasswords);
   const [newItemName, setNewItemName] = useState("");
   const [newItemCategory, setNewItemCategory] = useState("");
   const [newItemPrice, setNewItemPrice] = useState("");
@@ -294,6 +420,22 @@ export default function App() {
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [gatePassword, setGatePassword] = useState("");
+  const [gateError, setGateError] = useState("");
+  const [searchOrder, setSearchOrder] = useState("");
+  const [reportDate, setReportDate] = useState(formatDateKey(new Date()));
+
+  const [roleSession, setRoleSession] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem("krs-role-session") || "{}");
+    } catch {
+      return {};
+    }
+  });
+
+  useEffect(() => {
+    localStorage.setItem("krs-role-session", JSON.stringify(roleSession));
+  }, [roleSession]);
 
   useEffect(() => {
     const setupData = async () => {
@@ -308,6 +450,7 @@ export default function App() {
           }
         }
         await setDoc(doc(db, "settings", "brand"), defaultBrand, { merge: true });
+        await setDoc(doc(db, "settings", "roles"), defaultRolePasswords, { merge: true });
       } catch (error) {
         console.error(error);
       }
@@ -356,12 +499,33 @@ export default function App() {
       }
     );
 
+    const unsubRoles = onSnapshot(
+      doc(db, "settings", "roles"),
+      (snapshot) => {
+        if (snapshot.exists()) {
+          setRolePasswords({ ...defaultRolePasswords, ...snapshot.data() });
+        }
+      },
+      (error) => {
+        console.error(error);
+      }
+    );
+
     return () => {
       unsubMenu();
       unsubOrders();
       unsubBrand();
+      unsubRoles();
     };
   }, []);
+
+  useEffect(() => {
+    if (!isProtectedMode(mode)) return;
+    const unlocked = roleSession?.[mode] === true;
+    if (!unlocked) {
+      setPendingMode(mode);
+    }
+  }, [mode, roleSession]);
 
   const categories = useMemo(() => {
     const cats = Array.from(new Set(menu.map((item) => item.category).filter(Boolean)));
@@ -370,7 +534,7 @@ export default function App() {
 
   const availableMenu = useMemo(() => {
     return menu.filter((item) => {
-      const matchesSearch = item.name?.includes(search) || item.category?.includes(search);
+      const matchesSearch = safeIncludes(item.name, search) || safeIncludes(item.category, search);
       const matchesCategory = selectedCategory === "الكل" || item.category === selectedCategory;
       return item.available && matchesSearch && matchesCategory;
     });
@@ -387,8 +551,48 @@ export default function App() {
   const deliveredOrders = orders.filter((o) => o.status === "delivered").length;
   const totalSales = orders.filter((o) => o.status === "delivered").reduce((sum, o) => sum + Number(o.total || 0), 0);
 
+  const todayOrders = useMemo(() => {
+    return orders.filter((order) => formatDateKey(getCreatedAtDate(order)) === reportDate);
+  }, [orders, reportDate]);
+
+  const todayDeliveredOrders = useMemo(() => {
+    return todayOrders.filter((order) => order.status === "delivered");
+  }, [todayOrders]);
+
+  const todaySales = useMemo(() => {
+    return todayDeliveredOrders.reduce((sum, order) => sum + Number(order.total || 0), 0);
+  }, [todayDeliveredOrders]);
+
+  const topItemsToday = useMemo(() => {
+    const map = new Map();
+    todayDeliveredOrders.forEach((order) => {
+      (order.items || []).forEach((item) => {
+        const current = map.get(item.name) || { name: item.name, qty: 0, sales: 0 };
+        current.qty += Number(item.qty || 0);
+        current.sales += Number(item.qty || 0) * Number(item.price || 0);
+        map.set(item.name, current);
+      });
+    });
+    return Array.from(map.values()).sort((a, b) => b.qty - a.qty);
+  }, [todayDeliveredOrders]);
+
+  const filteredOrders = useMemo(() => {
+    if (!searchOrder.trim()) return orders;
+    return orders.filter(
+      (order) =>
+        safeIncludes(order.orderCode, searchOrder) ||
+        safeIncludes(order.customerName, searchOrder) ||
+        safeIncludes(order.phone, searchOrder)
+    );
+  }, [orders, searchOrder]);
+
   const primaryColor = brand.primaryColor || "#111111";
   const accentColor = brand.accentColor || "#c8a96b";
+
+  const customerGridColumns = isMobile ? "1fr" : "minmax(0, 1.8fr) minmax(320px, 0.95fr)";
+  const customerMenuGridColumns = isMobile ? "1fr" : isTablet ? "repeat(2, minmax(0, 1fr))" : "repeat(auto-fit, minmax(250px, 1fr))";
+  const metricGridColumns = isMobile ? "1fr 1fr" : "repeat(4, 1fr)";
+  const orderGridColumns = isMobile ? "1fr" : "1fr 1fr";
 
   const addToCart = (item) => {
     setCart((prev) => {
@@ -547,46 +751,145 @@ export default function App() {
     }
   };
 
+  const saveRolePasswords = async () => {
+    try {
+      setErrorMessage("");
+      await setDoc(doc(db, "settings", "roles"), rolePasswords, { merge: true });
+    } catch (error) {
+      setErrorMessage("فشل حفظ كلمات المرور");
+      console.error(error);
+    }
+  };
+
+  const logoutRole = (role) => {
+    setRoleSession((prev) => ({ ...prev, [role]: false }));
+    setPendingMode(role);
+  };
+
+  const tryOpenMode = (nextMode) => {
+    if (!isProtectedMode(nextMode)) {
+      setMode(nextMode);
+      return;
+    }
+    setMode(nextMode);
+    if (roleSession?.[nextMode] !== true) {
+      setPendingMode(nextMode);
+      setGateError("");
+      setGatePassword("");
+    }
+  };
+
+  const submitGate = () => {
+    if (!pendingMode) return;
+    const actual = rolePasswords?.[pendingMode] || "";
+    if (gatePassword === actual) {
+      setRoleSession((prev) => ({ ...prev, [pendingMode]: true }));
+      setGateError("");
+      setGatePassword("");
+      setPendingMode(null);
+    } else {
+      setGateError("كلمة المرور غير صحيحة");
+    }
+  };
+
   const visibleOrders = useMemo(() => {
-    if (mode === "kitchen") return orders.filter((o) => o.status === "new" || o.status === "preparing");
-    if (mode === "pickup") return orders.filter((o) => o.status === "ready");
-    return orders;
-  }, [orders, mode]);
+    const base = filteredOrders;
+    if (mode === "kitchen") return base.filter((o) => o.status === "new" || o.status === "preparing");
+    if (mode === "pickup") return base.filter((o) => o.status === "ready");
+    return base;
+  }, [filteredOrders, mode]);
+
+  const printDailyReport = () => {
+    const html = printableReportHTML({
+      brandName: brand.brandName,
+      reportDate,
+      sales: todaySales,
+      orderCount: todayOrders.length,
+      deliveredCount: todayDeliveredOrders.length,
+      items: topItemsToday,
+    });
+    const win = window.open("", "_blank", "width=1200,height=900");
+    if (!win) return;
+    win.document.write(html);
+    win.document.close();
+    win.focus();
+    win.print();
+  };
+
+  const renderRoleGate = pendingMode && isProtectedMode(mode) && roleSession?.[pendingMode] !== true;
 
   return (
     <div style={styles.app}>
       <div style={styles.container}>
-        {mode !== "customer" && (
+        <div
+          style={{
+            background: `linear-gradient(135deg, ${primaryColor} 0%, #141414 58%, ${accentColor} 100%)`,
+            color: "white",
+            borderRadius: 30,
+            padding: isMobile ? 18 : 24,
+            boxShadow: "0 16px 40px rgba(0,0,0,0.16)",
+            marginBottom: 24,
+            border: "1px solid rgba(255,255,255,0.08)",
+          }}
+        >
           <div
             style={{
-              background: `linear-gradient(135deg, ${primaryColor} 0%, #1f1f1f 55%, ${accentColor} 100%)`,
-              color: "white",
-              borderRadius: 28,
-              padding: 24,
-              boxShadow: "0 10px 30px rgba(0,0,0,0.12)",
-              marginBottom: 24,
+              display: "flex",
+              flexWrap: "wrap",
+              gap: 16,
+              justifyContent: "space-between",
+              alignItems: "center",
             }}
           >
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 16, justifyContent: "space-between", alignItems: "center" }}>
-              <div style={{ flex: "1 1 420px" }}>
-                <div style={{ display: "inline-flex", gap: 8, alignItems: "center", background: "rgba(255,255,255,0.1)", padding: "10px 14px", borderRadius: 999, fontSize: 14 }}>
-                  <Sparkles size={16} />
-                  نظام حقيقي مباشر مربوط بـ Firebase
-                </div>
-                <h1 style={{ fontSize: 46, margin: "16px 0 10px" }}>{brand.brandName}</h1>
-                <p style={{ color: "rgba(255,255,255,0.8)", lineHeight: 1.8, maxWidth: 760 }}>
-                  العميل يمسح QR، يطلب من المنيو، ثم يصل الطلب مباشرة إلى النظام الداخلي داخل الكوفي أو الفود ترك.
-                </p>
+            <div style={{ flex: "1 1 420px" }}>
+              <div
+                style={{
+                  display: "inline-flex",
+                  gap: 8,
+                  alignItems: "center",
+                  background: "rgba(255,255,255,0.1)",
+                  padding: "10px 14px",
+                  borderRadius: 999,
+                  fontSize: 14,
+                }}
+              >
+                <Sparkles size={16} />
+                نظام مباشر مربوط بـ Firebase
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, flex: "1 1 420px" }}>
-                <div style={{ background: "rgba(255,255,255,0.08)", borderRadius: 24, padding: 18 }}><div style={{ color: "rgba(255,255,255,0.7)" }}>إجمالي الطلبات</div><div style={{ fontSize: 30, fontWeight: 800, marginTop: 8 }}>{totalOrders}</div></div>
-                <div style={{ background: "rgba(255,255,255,0.08)", borderRadius: 24, padding: 18 }}><div style={{ color: "rgba(255,255,255,0.7)" }}>جديد</div><div style={{ fontSize: 30, fontWeight: 800, marginTop: 8 }}>{newOrders}</div></div>
-                <div style={{ background: "rgba(255,255,255,0.08)", borderRadius: 24, padding: 18 }}><div style={{ color: "rgba(255,255,255,0.7)" }}>جاهز</div><div style={{ fontSize: 30, fontWeight: 800, marginTop: 8 }}>{readyOrders}</div></div>
-                <div style={{ background: "rgba(255,255,255,0.08)", borderRadius: 24, padding: 18 }}><div style={{ color: "rgba(255,255,255,0.7)" }}>مبيعات مسلمة</div><div style={{ fontSize: 30, fontWeight: 800, marginTop: 8 }}>{money(totalSales)}</div></div>
+              <h1 style={{ fontSize: isMobile ? 28 : 46, margin: "16px 0 10px" }}>{brand.brandName}</h1>
+              <p style={{ color: "rgba(255,255,255,0.84)", lineHeight: 1.9, maxWidth: 780, margin: 0 }}>
+                صفحة عميل متجاوبة للموبايل + بوابة كلمات مرور للأدوار + تقرير مبيعات يومي قابل للطباعة.
+              </p>
+            </div>
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4, minmax(140px, 1fr))",
+                gap: 12,
+                flex: "1 1 420px",
+                width: "100%",
+              }}
+            >
+              <div style={{ background: "rgba(255,255,255,0.08)", borderRadius: 24, padding: 18 }}>
+                <div style={{ color: "rgba(255,255,255,0.72)" }}>إجمالي الطلبات</div>
+                <div style={{ fontSize: 28, fontWeight: 800, marginTop: 8 }}>{totalOrders}</div>
+              </div>
+              <div style={{ background: "rgba(255,255,255,0.08)", borderRadius: 24, padding: 18 }}>
+                <div style={{ color: "rgba(255,255,255,0.72)" }}>طلبات جديدة</div>
+                <div style={{ fontSize: 28, fontWeight: 800, marginTop: 8 }}>{newOrders}</div>
+              </div>
+              <div style={{ background: "rgba(255,255,255,0.08)", borderRadius: 24, padding: 18 }}>
+                <div style={{ color: "rgba(255,255,255,0.72)" }}>جاهز</div>
+                <div style={{ fontSize: 28, fontWeight: 800, marginTop: 8 }}>{readyOrders}</div>
+              </div>
+              <div style={{ background: "rgba(255,255,255,0.08)", borderRadius: 24, padding: 18 }}>
+                <div style={{ color: "rgba(255,255,255,0.72)" }}>مبيعات مسلمة</div>
+                <div style={{ fontSize: isMobile ? 20 : 28, fontWeight: 800, marginTop: 8 }}>{money(totalSales)}</div>
               </div>
             </div>
           </div>
-        )}
+        </div>
 
         {errorMessage ? (
           <div style={{ ...styles.card, borderColor: "#fecaca", background: "#fef2f2", color: "#991b1b", marginBottom: 24 }}>
@@ -596,19 +899,21 @@ export default function App() {
 
         {isLoading ? <div style={{ ...styles.card, marginBottom: 24 }}>جاري تحميل البيانات من Firebase...</div> : null}
 
-        {mode !== "customer" && (
-          <div style={{ ...styles.card, marginBottom: 24 }}>
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-              {[
-                ["customer", "العميل", <QrCode size={16} />],
-                ["cashier", "الاستقبال", <LayoutDashboard size={16} />],
-                ["kitchen", "المطبخ", <ChefHat size={16} />],
-                ["pickup", "الاستلام", <Bell size={16} />],
-                ["admin", "الإدارة", <Settings size={16} />],
-              ].map(([value, label, icon]) => (
+        <div style={{ ...styles.card, marginBottom: 24 }}>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            {[
+              ["customer", "العميل", <QrCode size={16} />],
+              ["cashier", "الاستقبال", <LayoutDashboard size={16} />],
+              ["kitchen", "المطبخ", <ChefHat size={16} />],
+              ["pickup", "الاستلام", <Bell size={16} />],
+              ["admin", "الإدارة", <Settings size={16} />],
+            ].map(([value, label, icon]) => {
+              const protectedView = isProtectedMode(String(value));
+              const unlocked = roleSession?.[String(value)] === true;
+              return (
                 <button
                   key={String(value)}
-                  onClick={() => setMode(value)}
+                  onClick={() => tryOpenMode(String(value))}
                   style={{
                     ...styles.buttonSecondary,
                     background: mode === value ? primaryColor : "white",
@@ -620,59 +925,106 @@ export default function App() {
                 >
                   {icon}
                   {label}
+                  {protectedView ? unlocked ? <ShieldCheck size={15} /> : <Lock size={15} /> : null}
                 </button>
-              ))}
+              );
+            })}
+          </div>
+        </div>
+
+        {renderRoleGate ? (
+          <div style={{ ...styles.card, maxWidth: 560, margin: "0 auto 24px" }}>
+            <SectionTitle icon={<Lock size={20} />} title={`دخول ${modeTitle(pendingMode)}`} sub="هذه الصفحة محمية بكلمة مرور" />
+            <div style={{ marginTop: 18 }}>
+              <label style={{ display: "block", marginBottom: 8, color: "#64748b" }}>كلمة المرور</label>
+              <input
+                style={styles.input}
+                type="password"
+                value={gatePassword}
+                onChange={(e) => setGatePassword(e.target.value)}
+                placeholder="ادخل كلمة المرور"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") submitGate();
+                }}
+              />
+              {gateError ? <div style={{ marginTop: 10, color: "#b91c1c", fontWeight: 700 }}>{gateError}</div> : null}
+              <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
+                <button style={{ ...styles.button, background: primaryColor, flex: 1 }} onClick={submitGate}>دخول</button>
+                <button
+                  style={{ ...styles.buttonSecondary, flex: 1 }}
+                  onClick={() => {
+                    setMode("customer");
+                    setPendingMode(null);
+                    setGatePassword("");
+                    setGateError("");
+                  }}
+                >
+                  رجوع للعميل
+                </button>
+              </div>
             </div>
           </div>
-        )}
+        ) : null}
 
-        {mode === "customer" && (
-          <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 24 }}>
+        {!renderRoleGate && mode === "customer" && (
+          <div style={{ display: "grid", gridTemplateColumns: customerGridColumns, gap: 24, alignItems: "start" }}>
             <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
               <div style={{ ...styles.card, padding: 0, overflow: "hidden" }}>
                 <div
                   style={{
-                    background: `linear-gradient(135deg, ${primaryColor} 0%, #262626 70%, ${accentColor} 100%)`,
+                    background: `linear-gradient(135deg, ${primaryColor} 0%, #262626 72%, ${accentColor} 100%)`,
                     color: "white",
-                    padding: 24,
+                    padding: isMobile ? 18 : 24,
                   }}
                 >
                   <div style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 16, flex: 1, minWidth: 0 }}>
                       {brand.logoUrl ? (
                         <img
                           src={brand.logoUrl}
                           alt={brand.brandName}
-                          style={{ width: 74, height: 74, objectFit: "cover", borderRadius: 22, border: "2px solid rgba(255,255,255,0.25)" }}
+                          style={{ width: isMobile ? 60 : 74, height: isMobile ? 60 : 74, objectFit: "cover", borderRadius: 22, border: "2px solid rgba(255,255,255,0.25)" }}
                         />
                       ) : (
                         <div
                           style={{
-                            width: 74,
-                            height: 74,
+                            width: isMobile ? 60 : 74,
+                            height: isMobile ? 60 : 74,
                             borderRadius: 22,
                             background: "rgba(255,255,255,0.12)",
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "center",
                             border: "2px solid rgba(255,255,255,0.2)",
+                            flexShrink: 0,
                           }}
                         >
                           <Store size={30} />
                         </div>
                       )}
-                      <div>
-                        <div style={{ display: "inline-flex", gap: 8, alignItems: "center", background: "rgba(255,255,255,0.1)", padding: "8px 12px", borderRadius: 999, fontSize: 13 }}>
+                      <div style={{ minWidth: 0 }}>
+                        <div
+                          style={{
+                            display: "inline-flex",
+                            gap: 8,
+                            alignItems: "center",
+                            background: "rgba(255,255,255,0.1)",
+                            padding: "8px 12px",
+                            borderRadius: 999,
+                            fontSize: 13,
+                            maxWidth: "100%",
+                          }}
+                        >
                           <Store size={15} />
-                          {brand.brandName}
+                          <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{brand.brandName}</span>
                         </div>
-                        <h2 style={{ margin: "14px 0 8px", fontSize: 34 }}>{brand.heroTitle}</h2>
-                        <p style={{ margin: 0, color: "rgba(255,255,255,0.78)", lineHeight: 1.8, maxWidth: 720 }}>
+                        <h2 style={{ margin: "14px 0 8px", fontSize: isMobile ? 24 : 34 }}>{brand.heroTitle}</h2>
+                        <p style={{ margin: 0, color: "rgba(255,255,255,0.78)", lineHeight: 1.8, maxWidth: 720, fontSize: isMobile ? 14 : 16 }}>
                           {brand.heroSubtitle}
                         </p>
                       </div>
                     </div>
-                    <div style={{ minWidth: 220, background: "rgba(255,255,255,0.08)", borderRadius: 22, padding: 18 }}>
+                    <div style={{ width: isMobile ? "100%" : 220, background: "rgba(255,255,255,0.08)", borderRadius: 22, padding: 18 }}>
                       <div style={{ fontSize: 13, color: "rgba(255,255,255,0.72)" }}>مدة تجهيز تقريبية</div>
                       <div style={{ fontSize: 28, fontWeight: 800, marginTop: 8 }}>5 - 12 دقيقة</div>
                     </div>
@@ -681,19 +1033,22 @@ export default function App() {
               </div>
 
               <div style={styles.card}>
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "center", flexWrap: "wrap", marginBottom: 18 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: isMobile ? "stretch" : "center", flexWrap: "wrap", marginBottom: 18 }}>
                   <div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 800, fontSize: 28, marginBottom: 6 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 800, fontSize: isMobile ? 22 : 28, marginBottom: 6 }}>
                       <ClipboardList size={20} /> المنيو
                     </div>
-                    <div style={{ color: "#64748b" }}>واجهة عميل احترافية تعرض الأصناف مع صورها ووصف مختصر.</div>
+                    <div style={{ color: "#64748b" }}>واجهة عميل متجاوبة ومناسبة للجوالات مثل الآيفون.</div>
                   </div>
-                  <div style={{ minWidth: 260 }}>
-                    <input style={styles.input} value={search} onChange={(e) => setSearch(e.target.value)} placeholder="ابحث في المنيو" />
+                  <div style={{ minWidth: isMobile ? "100%" : 260 }}>
+                    <div style={{ position: "relative" }}>
+                      <Search size={16} style={{ position: "absolute", top: 14, right: 12, color: "#94a3b8" }} />
+                      <input style={{ ...styles.input, paddingRight: 36 }} value={search} onChange={(e) => setSearch(e.target.value)} placeholder="ابحث في المنيو" />
+                    </div>
                   </div>
                 </div>
 
-                <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 20 }}>
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 20, overflowX: "auto", paddingBottom: 4 }}>
                   {categories.map((category) => (
                     <button
                       key={category}
@@ -703,6 +1058,7 @@ export default function App() {
                         background: selectedCategory === category ? primaryColor : "#f5f5f4",
                         color: selectedCategory === category ? "white" : "#111111",
                         border: selectedCategory === category ? `1px solid ${primaryColor}` : "1px solid #e7e5e4",
+                        whiteSpace: "nowrap",
                       }}
                     >
                       {category}
@@ -710,28 +1066,30 @@ export default function App() {
                   ))}
                 </div>
 
-                <div style={styles.customerMenuGrid}>
+                <div style={{ display: "grid", gridTemplateColumns: customerMenuGridColumns, gap: 18 }}>
                   {availableMenu.map((item) => (
                     <div key={item.id} style={styles.menuCard}>
                       <img
                         src={item.image || "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=900&q=80"}
                         alt={item.name}
-                        style={styles.menuImage}
+                        style={{ ...styles.menuImage, height: isMobile ? 200 : 180 }}
                       />
                       <div style={{ padding: 16 }}>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
                           <div>
-                            <div style={{ fontSize: 20, fontWeight: 800 }}>{item.name}</div>
+                            <div style={{ fontSize: isMobile ? 18 : 20, fontWeight: 800 }}>{item.name}</div>
                             <div style={{ color: "#64748b", marginTop: 6 }}>{item.category}</div>
                           </div>
-                          <div style={{ fontWeight: 800, fontSize: 16, color: primaryColor }}>{money(item.price)}</div>
+                          <div style={{ fontWeight: 800, fontSize: 16, color: primaryColor, whiteSpace: "nowrap" }}>{money(item.price)}</div>
                         </div>
-                        <div style={{ color: "#6b7280", marginTop: 10, lineHeight: 1.7, minHeight: 48 }}>
+                        <div style={{ color: "#6b7280", marginTop: 10, lineHeight: 1.7, minHeight: 48, fontSize: 14 }}>
                           {item.description || "صنف مميز من قائمة الكوفي أو التراك."}
                         </div>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 14 }}>
-                          <div style={{ color: "#94a3b8", fontSize: 13 }}>وقت تحضير: {item.prepTime} دقائق</div>
-                          <button style={{ ...styles.button, background: primaryColor }} onClick={() => addToCart(item)}>إضافة</button>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 14, gap: 10 }}>
+                          <div style={{ color: "#94a3b8", fontSize: 13 }}>وقت التحضير: {item.prepTime} دقائق</div>
+                          <button style={{ ...styles.button, background: primaryColor, minWidth: 94 }} onClick={() => addToCart(item)}>
+                            إضافة
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -741,9 +1099,10 @@ export default function App() {
             </div>
 
             <div>
-              <div style={{ ...styles.card, position: "sticky", top: 16 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 800, fontSize: 28, marginBottom: 16 }}>
-                  <ShoppingCart size={20} /> السلة
+              <div style={{ ...styles.card, position: isMobile ? "relative" : "sticky", top: 16 }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, fontWeight: 800, fontSize: isMobile ? 22 : 28, marginBottom: 16 }}>
+                  <span style={{ display: "flex", alignItems: "center", gap: 8 }}><ShoppingCart size={20} /> السلة</span>
+                  <span style={{ fontSize: 14, color: "#64748b" }}>{cart.length} صنف</span>
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                   {cart.length === 0 ? (
@@ -753,11 +1112,11 @@ export default function App() {
                       <div key={item.id} style={{ border: "1px solid #e5e7eb", borderRadius: 18, padding: 16 }}>
                         <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
                           {item.image ? (
-                            <img src={item.image} alt={item.name} style={{ width: 62, height: 62, borderRadius: 14, objectFit: "cover" }} />
+                            <img src={item.image} alt={item.name} style={{ width: 62, height: 62, borderRadius: 14, objectFit: "cover", flexShrink: 0 }} />
                           ) : null}
-                          <div style={{ flex: 1 }}>
-                            <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
-                              <div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+                              <div style={{ minWidth: 0 }}>
                                 <div style={{ fontWeight: 700 }}>{item.name}</div>
                                 <div style={{ color: "#64748b", marginTop: 4 }}>{money(item.price * item.qty)}</div>
                               </div>
@@ -782,7 +1141,7 @@ export default function App() {
                     ))
                   )}
 
-                  <div style={{ border: "1px solid #e5e7eb", background: "#fafaf9", borderRadius: 18, padding: 16, display: "flex", justifyContent: "space-between" }}>
+                  <div style={{ border: "1px solid #e5e7eb", background: "#fafaf9", borderRadius: 18, padding: 16, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <span>إشعار عند الجاهزية</span>
                     <input type="checkbox" checked={notifyCustomer} onChange={(e) => setNotifyCustomer(e.target.checked)} />
                   </div>
@@ -794,7 +1153,7 @@ export default function App() {
 
                   {!isCheckoutOpen ? (
                     <button
-                      style={{ ...styles.button, background: primaryColor, width: "100%" }}
+                      style={{ ...styles.button, background: primaryColor, width: "100%", padding: isMobile ? "14px 18px" : "12px 18px" }}
                       onClick={() => setIsCheckoutOpen(true)}
                       disabled={cart.length === 0}
                     >
@@ -817,7 +1176,7 @@ export default function App() {
                           <textarea style={{ ...styles.textarea, minHeight: 90 }} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="مثال: أتواجد أمام السيارة البيضاء / بدون أدوات / وقت الاستلام..." />
                         </div>
                       </div>
-                      <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
+                      <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", gap: 10, marginTop: 14 }}>
                         <button style={{ ...styles.buttonSecondary, flex: 1 }} onClick={() => setIsCheckoutOpen(false)}>
                           رجوع
                         </button>
@@ -837,42 +1196,51 @@ export default function App() {
           </div>
         )}
 
-        {(mode === "cashier" || mode === "kitchen" || mode === "pickup") && (
+        {!renderRoleGate && (mode === "cashier" || mode === "kitchen" || mode === "pickup") && (
           <div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 24 }}>
-              <MetricCard label="طلبات جديدة" value={newOrders} />
-              <MetricCard label="قيد التحضير" value={preparingOrders} />
-              <MetricCard label="جاهز" value={readyOrders} />
-              <MetricCard label="تم التسليم" value={deliveredOrders} />
+            <div style={{ display: "grid", gridTemplateColumns: metricGridColumns, gap: 16, marginBottom: 24 }}>
+              <MetricCard label="طلبات جديدة" value={newOrders} accent={accentColor} />
+              <MetricCard label="قيد التحضير" value={preparingOrders} accent={primaryColor} />
+              <MetricCard label="جاهز" value={readyOrders} accent="#059669" />
+              <MetricCard label="تم التسليم" value={deliveredOrders} accent="#6b7280" />
             </div>
 
             <div style={styles.card}>
-              <SectionTitle
-                icon={mode === "cashier" ? <LayoutDashboard size={20} /> : mode === "kitchen" ? <ChefHat size={20} /> : <Bell size={20} />}
-                title={mode === "cashier" ? "لوحة الاستقبال داخل الكوفي" : mode === "kitchen" ? "شاشة المطبخ والتحضير" : "شاشة الاستلام والنداء"}
-                sub={mode === "cashier" ? "هذه الشاشة تستقبل الطلبات من جوالات العملاء مباشرة" : mode === "kitchen" ? "تعرض الطلبات المطلوب تحضيرها فقط" : "تعرض الطلبات الجاهزة للتسليم"}
-              />
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginTop: 20 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+                <SectionTitle
+                  icon={mode === "cashier" ? <LayoutDashboard size={20} /> : mode === "kitchen" ? <ChefHat size={20} /> : <Bell size={20} />}
+                  title={mode === "cashier" ? "لوحة الاستقبال داخل الكوفي" : mode === "kitchen" ? "شاشة المطبخ والتحضير" : "شاشة الاستلام والنداء"}
+                  sub={mode === "cashier" ? "هذه الشاشة تستقبل الطلبات من جوالات العملاء مباشرة" : mode === "kitchen" ? "تعرض الطلبات المطلوب تحضيرها فقط" : "تعرض الطلبات الجاهزة للتسليم"}
+                />
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                  <input style={{ ...styles.input, width: isMobile ? "100%" : 260 }} value={searchOrder} onChange={(e) => setSearchOrder(e.target.value)} placeholder="بحث برقم الطلب أو الاسم أو الهاتف" />
+                  <button style={{ ...styles.buttonSecondary, display: "flex", alignItems: "center", gap: 8 }} onClick={() => logoutRole(mode)}>
+                    <LogOut size={16} /> تسجيل خروج
+                  </button>
+                </div>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: orderGridColumns, gap: 16, marginTop: 20 }}>
                 {visibleOrders.map((order) => (
                   <div key={order.id} style={{ border: "1px solid #e5e7eb", borderRadius: 24, padding: 18, boxShadow: "0 4px 14px rgba(0,0,0,0.04)" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
                       <div>
                         <div style={{ fontSize: 24, fontWeight: 800 }}>{order.orderCode || order.id}</div>
                         <div style={{ display: "flex", alignItems: "center", gap: 6, color: "#475569", marginTop: 8 }}><User size={16} /> {order.customerName}</div>
                         <div style={{ display: "flex", alignItems: "center", gap: 6, color: "#475569", marginTop: 6 }}><Phone size={16} /> {order.phone}</div>
                         <div style={{ display: "flex", alignItems: "center", gap: 6, color: "#94a3b8", marginTop: 6, fontSize: 14 }}><Clock3 size={16} /> {order.createdAtLabel || "الآن"}</div>
                       </div>
-                      <div style={{ background: statusMap[order.status].bg, color: statusMap[order.status].color, border: `1px solid ${statusMap[order.status].border}`, padding: "8px 12px", borderRadius: 999, fontWeight: 700 }}>
-                        {statusMap[order.status].label}
+                      <div style={{ background: statusMap[order.status]?.bg, color: statusMap[order.status]?.color, border: `1px solid ${statusMap[order.status]?.border}`, padding: "8px 12px", borderRadius: 999, fontWeight: 700 }}>
+                        {statusMap[order.status]?.label}
                       </div>
                     </div>
 
                     <div style={{ border: "1px solid #e5e7eb", background: "#fafaf9", borderRadius: 18, padding: 16, marginTop: 16 }}>
                       {(order.items || []).map((item, idx) => (
                         <div key={`${order.id}-${idx}`} style={{ borderBottom: idx !== (order.items || []).length - 1 ? "1px solid #e5e7eb" : "none", paddingBottom: 8, marginBottom: 8 }}>
-                          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6, gap: 12 }}>
                             <span>{item.name} × {item.qty}</span>
-                            <span style={{ fontWeight: 700 }}>{money(Number(item.price) * item.qty)}</span>
+                            <span style={{ fontWeight: 700, whiteSpace: "nowrap" }}>{money(Number(item.price) * item.qty)}</span>
                           </div>
                           {item.itemNote ? <div style={{ color: "#64748b", fontSize: 13 }}>ملاحظة الصنف: {item.itemNote}</div> : null}
                         </div>
@@ -887,7 +1255,7 @@ export default function App() {
                     </div>
 
                     {mode !== "pickup" ? (
-                      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8, marginTop: 12 }}>
+                      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4, 1fr)", gap: 8, marginTop: 12 }}>
                         <button style={styles.buttonSecondary} onClick={() => setOrderStatus(order.id, "new")}>جديد</button>
                         <button style={styles.buttonSecondary} onClick={() => setOrderStatus(order.id, "preparing")}>تحضير</button>
                         <button style={styles.buttonSecondary} onClick={() => setOrderStatus(order.id, "ready")}>جاهز</button>
@@ -905,12 +1273,12 @@ export default function App() {
           </div>
         )}
 
-        {mode === "admin" && (
+        {!renderRoleGate && mode === "admin" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-            <div style={{ display: "grid", gridTemplateColumns: "1.2fr 0.8fr", gap: 24 }}>
+            <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1.2fr 0.8fr", gap: 24 }}>
               <div style={styles.card}>
                 <SectionTitle icon={<Palette size={20} />} title="هوية البراند في صفحة العميل" sub="من هنا تعدل الشعار واسم البراند والألوان التي تظهر للزبون" />
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginTop: 20 }}>
+                <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 16, marginTop: 20 }}>
                   <div>
                     <label style={{ display: "block", marginBottom: 8, color: "#64748b" }}>اسم البراند</label>
                     <input style={styles.input} value={brand.brandName} onChange={(e) => setBrand((prev) => ({ ...prev, brandName: e.target.value }))} />
@@ -964,11 +1332,76 @@ export default function App() {
               </div>
             </div>
 
+            <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 24 }}>
+              <div style={styles.card}>
+                <SectionTitle icon={<Lock size={20} />} title="كلمات مرور الصفحات" sub="يمكن تغيير كلمة مرور الإدارة والاستقبال والمطبخ والاستلام" />
+                <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 12, marginTop: 18 }}>
+                  <div>
+                    <label style={{ display: "block", marginBottom: 6, color: "#64748b" }}>كلمة مرور الإدارة</label>
+                    <input style={styles.input} type="password" value={rolePasswords.admin || ""} onChange={(e) => setRolePasswords((prev) => ({ ...prev, admin: e.target.value }))} />
+                  </div>
+                  <div>
+                    <label style={{ display: "block", marginBottom: 6, color: "#64748b" }}>كلمة مرور الاستقبال</label>
+                    <input style={styles.input} type="password" value={rolePasswords.cashier || ""} onChange={(e) => setRolePasswords((prev) => ({ ...prev, cashier: e.target.value }))} />
+                  </div>
+                  <div>
+                    <label style={{ display: "block", marginBottom: 6, color: "#64748b" }}>كلمة مرور المطبخ</label>
+                    <input style={styles.input} type="password" value={rolePasswords.kitchen || ""} onChange={(e) => setRolePasswords((prev) => ({ ...prev, kitchen: e.target.value }))} />
+                  </div>
+                  <div>
+                    <label style={{ display: "block", marginBottom: 6, color: "#64748b" }}>كلمة مرور الاستلام</label>
+                    <input style={styles.input} type="password" value={rolePasswords.pickup || ""} onChange={(e) => setRolePasswords((prev) => ({ ...prev, pickup: e.target.value }))} />
+                  </div>
+                  <div style={{ gridColumn: "1 / -1" }}>
+                    <button style={{ ...styles.button, background: primaryColor }} onClick={saveRolePasswords}>حفظ كلمات المرور</button>
+                  </div>
+                </div>
+              </div>
+
+              <div style={styles.card}>
+                <SectionTitle icon={<Receipt size={20} />} title="تقرير المبيعات اليومية" sub="داخل الإدارة مع إمكانية اختيار التاريخ والطباعة" />
+                <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr auto", gap: 12, marginTop: 18, alignItems: "end" }}>
+                  <div>
+                    <label style={{ display: "block", marginBottom: 6, color: "#64748b" }}>تاريخ التقرير</label>
+                    <input type="date" style={styles.input} value={reportDate} onChange={(e) => setReportDate(e.target.value)} />
+                  </div>
+                  <button style={{ ...styles.button, background: primaryColor, display: "flex", alignItems: "center", gap: 8, justifyContent: "center" }} onClick={printDailyReport}>
+                    <Printer size={16} /> طباعة التقرير
+                  </button>
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(3, 1fr)", gap: 12, marginTop: 16 }}>
+                  <MetricCard label="مبيعات اليوم" value={money(todaySales)} accent={accentColor} />
+                  <MetricCard label="عدد الطلبات" value={todayOrders.length} accent={primaryColor} />
+                  <MetricCard label="طلبات مسلّمة" value={todayDeliveredOrders.length} accent="#059669" />
+                </div>
+
+                <div style={{ marginTop: 18, border: "1px solid #e5e7eb", borderRadius: 22, overflow: "hidden" }}>
+                  <div style={{ padding: 14, background: "#fafaf9", fontWeight: 800 }}>الأصناف الأكثر مبيعاً</div>
+                  <div style={{ display: "flex", flexDirection: "column" }}>
+                    {topItemsToday.length === 0 ? (
+                      <div style={{ padding: 16, color: "#64748b" }}>لا توجد طلبات مسلّمة في هذا التاريخ.</div>
+                    ) : (
+                      topItemsToday.slice(0, 8).map((item, index) => (
+                        <div key={item.name} style={{ padding: 14, borderTop: index === 0 ? "none" : "1px solid #e5e7eb", display: "flex", justifyContent: "space-between", gap: 12 }}>
+                          <div>
+                            <div style={{ fontWeight: 700 }}>{item.name}</div>
+                            <div style={{ color: "#64748b", marginTop: 4 }}>الكمية: {item.qty}</div>
+                          </div>
+                          <div style={{ fontWeight: 800 }}>{money(item.sales)}</div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <div style={styles.card}>
               <SectionTitle icon={<Package size={20} />} title="إدارة المنيو والصور" sub="تقدر الآن تعديل صورة كل صنف ورفعها مباشرة من الجهاز أو تعديل رابطها ووصفها" />
               <div style={{ marginTop: 20, display: "flex", flexDirection: "column", gap: 16 }}>
                 {menu.map((item) => (
-                  <div key={item.id} style={{ border: "1px solid #e5e7eb", borderRadius: 24, padding: 16, display: "grid", gridTemplateColumns: "180px 1fr", gap: 16, alignItems: "start" }}>
+                  <div key={item.id} style={{ border: "1px solid #e5e7eb", borderRadius: 24, padding: 16, display: "grid", gridTemplateColumns: isMobile ? "1fr" : "180px 1fr", gap: 16, alignItems: "start" }}>
                     <div>
                       <img src={item.image || "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=900&q=80"} alt={item.name} style={{ width: "100%", height: 140, borderRadius: 18, objectFit: "cover", marginBottom: 10 }} />
                       <div style={{ display: "flex", gap: 8, alignItems: "center", justifyContent: "space-between" }}>
@@ -978,7 +1411,7 @@ export default function App() {
                         <button style={styles.buttonSecondary} onClick={() => toggleAvailability(item.id, item.available)}>{item.available ? "إيقاف" : "تفعيل"}</button>
                       </div>
                     </div>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                    <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 12 }}>
                       <div>
                         <label style={{ display: "block", marginBottom: 6, color: "#64748b", fontSize: 13 }}>اسم الصنف</label>
                         <input style={styles.input} value={item.name || ""} onChange={(e) => updateMenuItemField(item.id, "name", e.target.value)} />
@@ -998,7 +1431,7 @@ export default function App() {
                       <div style={{ gridColumn: "1 / -1" }}>
                         <label style={{ display: "block", marginBottom: 6, color: "#64748b", fontSize: 13 }}>رابط الصورة</label>
                         <input style={styles.input} value={item.image || ""} onChange={(e) => updateMenuItemField(item.id, "image", e.target.value)} placeholder="https://...jpg أو png" />
-                        <div style={{ display: "flex", gap: 10, marginTop: 10, alignItems: "center" }}>
+                        <div style={{ display: "flex", gap: 10, marginTop: 10, alignItems: "center", flexWrap: "wrap" }}>
                           <label style={{ ...styles.buttonSecondary, display: "inline-flex", alignItems: "center", gap: 8 }}>
                             <Upload size={16} /> رفع صورة مباشرة
                             <input
@@ -1021,7 +1454,7 @@ export default function App() {
               </div>
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
+            <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 24 }}>
               <div style={styles.card}>
                 <SectionTitle icon={<Upload size={20} />} title="إضافة صنف جديد" sub="مع صورة ووصف ليظهر مباشرة في المنيو" />
                 <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 18 }}>
@@ -1029,7 +1462,7 @@ export default function App() {
                   <input style={styles.input} value={newItemCategory} onChange={(e) => setNewItemCategory(e.target.value)} placeholder="التصنيف" />
                   <input style={styles.input} value={newItemPrice} onChange={(e) => setNewItemPrice(e.target.value)} placeholder="السعر" />
                   <input style={styles.input} value={newItemImage} onChange={(e) => setNewItemImage(e.target.value)} placeholder="رابط الصورة" />
-                  <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                  <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
                     <label style={{ ...styles.buttonSecondary, display: "inline-flex", alignItems: "center", gap: 8 }}>
                       <Upload size={16} /> تحميل الصورة مباشرة
                       <input
@@ -1047,17 +1480,27 @@ export default function App() {
               </div>
 
               <div style={styles.card}>
-                <SectionTitle icon={<ImageIcon size={20} />} title="الذي تغيّر الآن" sub="واجهة العميل والإدارة صارت أقرب لنسخة تجارية حقيقية" />
+                <SectionTitle icon={<ImageIcon size={20} />} title="الذي تغيّر الآن" sub="الواجهة أصبحت أقرب لنسخة تجارية حقيقية" />
                 <div style={{ marginTop: 18, color: "#475569", lineHeight: 2 }}>
-                  • العميل لا يرى الاسم ورقم الهاتف في الواجهة الرئيسية، بل فقط عند الضغط على متابعة إلى تأكيد الطلب. <br />
-                  • كل صنف في السلة له ملاحظاته الخاصة التي تظهر للإدارة والمطبخ. <br />
-                  • الإدارة تستطيع رفع الصور مباشرة من الجهاز إلى Firebase Storage أو لصق رابط الصورة. <br />
-                  • الإدارة تستطيع تغيير اسم البراند، الشعار، والألوان من داخل الموقع.
+                  • حماية صفحات الإدارة والاستقبال والمطبخ والاستلام بكلمة مرور. <br />
+                  • تقرير يومي للمبيعات داخل الإدارة مع زر طباعة مباشر. <br />
+                  • صفحة العميل أصبحت متجاوبة ومناسبة للآيفون والجوالات. <br />
+                  • الملاحظات لكل صنف بقيت موجودة وتصل للمطبخ والاستقبال. <br />
+                  • تصميم أفخم بخلفيات زجاجية وتدرجات سوداء/ذهبية. <br />
+                </div>
+                <div style={{ marginTop: 18 }}>
+                  <button style={{ ...styles.buttonSecondary, display: "flex", alignItems: "center", gap: 8 }} onClick={() => logoutRole("admin")}>
+                    <LogOut size={16} /> تسجيل خروج الإدارة
+                  </button>
                 </div>
               </div>
             </div>
           </div>
         )}
+
+        <div style={{ textAlign: "center", color: "#64748b", fontSize: 12, marginTop: 28 }}>
+          العرض الحالي: {width}px
+        </div>
       </div>
     </div>
   );
