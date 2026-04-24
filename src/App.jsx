@@ -30,6 +30,9 @@ import {
   Trash2,
   MessageCircle,
   Volume2,
+  Sun,
+  Moon,
+  Languages,
 } from "lucide-react";
 import { initializeApp, getApps, getApp } from "firebase/app";
 import {
@@ -65,7 +68,11 @@ const storage = getStorage(app);
 const defaultMenu = [
   {
     name: "سبانيش لاتيه",
+    nameAr: "سبانيش لاتيه",
+    nameEn: "Spanish Latte",
     category: "القهوة",
+    categoryAr: "القهوة",
+    categoryEn: "Coffee",
     price: 18,
     available: true,
     prepTime: 4,
@@ -75,20 +82,32 @@ const defaultMenu = [
       "https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=900&q=80",
     ],
     description: "قهوة مثلجة بحليب غني ولمسة كراميل ناعمة.",
+    descriptionAr: "قهوة مثلجة بحليب غني ولمسة كراميل ناعمة.",
+    descriptionEn: "Iced coffee with rich milk and a smooth caramel touch.",
   },
   {
     name: "آيس لاتيه",
+    nameAr: "آيس لاتيه",
+    nameEn: "Iced Latte",
     category: "القهوة",
+    categoryAr: "القهوة",
+    categoryEn: "Coffee",
     price: 16,
     available: true,
     prepTime: 3,
     image: "https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=900&q=80",
     images: ["https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=900&q=80"],
     description: "إسبريسو بارد مع حليب طازج وطعم متوازن.",
+    descriptionAr: "إسبريسو بارد مع حليب طازج وطعم متوازن.",
+    descriptionEn: "Cold espresso with fresh milk and a balanced taste.",
   },
   {
     name: "برغر لحم",
+    nameAr: "برغر لحم",
+    nameEn: "Beef Burger",
     category: "الوجبات",
+    categoryAr: "الوجبات",
+    categoryEn: "Meals",
     price: 28,
     available: true,
     prepTime: 9,
@@ -98,16 +117,24 @@ const defaultMenu = [
       "https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=900&q=80",
     ],
     description: "برغر لحم طازج مع جبن وصوص خاص وخبز محمص.",
+    descriptionAr: "برغر لحم طازج مع جبن وصوص خاص وخبز محمص.",
+    descriptionEn: "Fresh beef burger with cheese, special sauce, and toasted bun.",
   },
   {
     name: "برغر دجاج",
+    nameAr: "برغر دجاج",
+    nameEn: "Chicken Burger",
     category: "الوجبات",
+    categoryAr: "الوجبات",
+    categoryEn: "Meals",
     price: 25,
     available: true,
     prepTime: 8,
     image: "https://images.unsplash.com/photo-1606755962773-d324e0a13086?auto=format&fit=crop&w=900&q=80",
     images: ["https://images.unsplash.com/photo-1606755962773-d324e0a13086?auto=format&fit=crop&w=900&q=80"],
     description: "برغر دجاج مقرمش مع خس وصوص خفيف.",
+    descriptionAr: "برغر دجاج مقرمش مع خس وصوص خفيف.",
+    descriptionEn: "Crispy chicken burger with lettuce and light sauce.",
   },
 ];
 
@@ -124,10 +151,81 @@ const defaultBrand = {
 const defaultRolePasswords = { admin: "1234" };
 
 const statusMap = {
-  new: { label: "جديد", bg: "#fef3c7", color: "#92400e", border: "#fde68a" },
-  preparing: { label: "قيد التحضير", bg: "#dbeafe", color: "#1e40af", border: "#93c5fd" },
-  ready: { label: "جاهز", bg: "#d1fae5", color: "#065f46", border: "#6ee7b7" },
-  delivered: { label: "تم التسليم", bg: "#e5e7eb", color: "#374151", border: "#d1d5db" },
+  new: { label: "جديد", labelEn: "New", bg: "#fef3c7", color: "#92400e", border: "#fde68a" },
+  preparing: { label: "قيد التحضير", labelEn: "Preparing", bg: "#dbeafe", color: "#1e40af", border: "#93c5fd" },
+  ready: { label: "جاهز", labelEn: "Ready", bg: "#d1fae5", color: "#065f46", border: "#6ee7b7" },
+  delivered: { label: "تم التسليم", labelEn: "Delivered", bg: "#e5e7eb", color: "#374151", border: "#d1d5db" },
+};
+
+const translations = {
+  ar: {
+    all: "الكل",
+    cart: "السلة",
+    menu: "المنيو",
+    searchMenu: "ابحث في المنيو",
+    add: "إضافة",
+    prepTime: "وقت التحضير",
+    minutes: "دقائق",
+    emptyCart: "السلة فارغة. اختر أصنافك من المنيو.",
+    notifyReady: "إشعار عند الجاهزية",
+    total: "الإجمالي",
+    continueCheckout: "متابعة إلى تأكيد الطلب",
+    confirmOrderData: "تأكيد بيانات الطلب",
+    customerName: "اسم العميل",
+    phone: "رقم الهاتف",
+    generalNotes: "ملاحظات عامة على الطلب",
+    back: "رجوع",
+    confirmSend: "تأكيد وإرسال الطلب",
+    sending: "جاري إرسال الطلب...",
+    paymentMethod: "طريقة الدفع",
+    applePay: "Apple Pay",
+    card: "بطاقة",
+    cash: "كاش",
+    payOnPickup: "عند الاستلام",
+    itemNote: "ملاحظات هذا الصنف",
+    readyTime: "مدة تجهيز تقريبية",
+    orderHint: "بعد إرسال الطلب سيصل مباشرة إلى نظام الكوفي، وعند تجهيز الطلب يمكن التواصل معك.",
+    descriptionFallback: "صنف مميز من قائمة الكوفي أو التراك.",
+    customerPageSubtitle: "اختر طلبك من المنيو وأرسله مباشرة.",
+    item: "صنف",
+    orderReceived: "تم استلام طلبك",
+    orderNumber: "رقم الطلب الخاص بك:",
+    done: "تم",
+  },
+  en: {
+    all: "All",
+    cart: "Cart",
+    menu: "Menu",
+    searchMenu: "Search menu",
+    add: "Add",
+    prepTime: "Prep time",
+    minutes: "mins",
+    emptyCart: "Your cart is empty. Choose items from the menu.",
+    notifyReady: "Notify when ready",
+    total: "Total",
+    continueCheckout: "Continue to checkout",
+    confirmOrderData: "Confirm order details",
+    customerName: "Customer name",
+    phone: "Phone number",
+    generalNotes: "General order notes",
+    back: "Back",
+    confirmSend: "Confirm and send",
+    sending: "Sending order...",
+    paymentMethod: "Payment method",
+    applePay: "Apple Pay",
+    card: "Card",
+    cash: "Cash",
+    payOnPickup: "Pay on pickup",
+    itemNote: "Item notes",
+    readyTime: "Estimated prep time",
+    orderHint: "After sending, the order goes directly to the coffee truck system.",
+    descriptionFallback: "A featured item from the coffee truck menu.",
+    customerPageSubtitle: "Choose your order from the menu and send it directly.",
+    item: "item",
+    orderReceived: "Your order was received",
+    orderNumber: "Your order number:",
+    done: "Done",
+  },
 };
 
 function money(value) {
@@ -175,6 +273,24 @@ function normalizeImages(value) {
   return [];
 }
 
+function getLocalized(item, field, language) {
+  if (!item) return "";
+  if (language === "en") return item[`${field}En`] || item[field] || item[`${field}Ar`] || "";
+  return item[`${field}Ar`] || item[field] || item[`${field}En`] || "";
+}
+
+function getDisplayName(item, language) {
+  return getLocalized(item, "name", language) || "Item";
+}
+
+function getDisplayCategory(item, language) {
+  return getLocalized(item, "category", language) || "Menu";
+}
+
+function getDisplayDescription(item, language, fallback) {
+  return getLocalized(item, "description", language) || fallback;
+}
+
 function playOrderBeep() {
   try {
     const AudioContext = window.AudioContext || window.webkitAudioContext;
@@ -196,79 +312,6 @@ function playOrderBeep() {
   }
 }
 
-const translations = {
-  ar: {
-    cart: "السلة",
-    menu: "المنيو",
-    searchMenu: "ابحث في المنيو",
-    add: "إضافة",
-    prepTime: "وقت التحضير",
-    minutes: "دقائق",
-    emptyCart: "السلة فارغة. اختر أصنافك من المنيو.",
-    notifyReady: "إشعار عند الجاهزية",
-    total: "الإجمالي",
-    continueCheckout: "متابعة إلى تأكيد الطلب",
-    confirmOrderData: "تأكيد بيانات الطلب",
-    customerName: "اسم العميل",
-    phone: "رقم الهاتف",
-    generalNotes: "ملاحظات عامة على الطلب",
-    back: "رجوع",
-    confirmSend: "تأكيد وإرسال الطلب",
-    sending: "جاري إرسال الطلب...",
-    paymentMethod: "طريقة الدفع",
-    applePay: "Apple Pay",
-    card: "بطاقة",
-    cash: "كاش",
-    payOnPickup: "عند الاستلام",
-    itemNote: "ملاحظات هذا الصنف",
-    theme: "الثيم",
-    light: "نهاري",
-    dark: "ليلي",
-    language: "اللغة",
-    arabic: "العربية",
-    english: "English",
-    readyTime: "مدة تجهيز تقريبية",
-    orderHint: "بعد إرسال الطلب سيصل مباشرة إلى نظام الكوفي، وعند تجهيز الطلب يمكن التواصل معك.",
-    descriptionFallback: "صنف مميز من قائمة الكوفي أو التراك.",
-    customerPageSubtitle: "اختر طلبك من المنيو وأرسله مباشرة.",
-  },
-  en: {
-    cart: "Cart",
-    menu: "Menu",
-    searchMenu: "Search menu",
-    add: "Add",
-    prepTime: "Prep time",
-    minutes: "mins",
-    emptyCart: "Your cart is empty. Choose items from the menu.",
-    notifyReady: "Notify when ready",
-    total: "Total",
-    continueCheckout: "Continue to checkout",
-    confirmOrderData: "Confirm order details",
-    customerName: "Customer name",
-    phone: "Phone number",
-    generalNotes: "General order notes",
-    back: "Back",
-    confirmSend: "Confirm and send",
-    sending: "Sending order...",
-    paymentMethod: "Payment method",
-    applePay: "Apple Pay",
-    card: "Card",
-    cash: "Cash",
-    payOnPickup: "Pay on pickup",
-    itemNote: "Item notes",
-    theme: "Theme",
-    light: "Light",
-    dark: "Dark",
-    language: "Language",
-    arabic: "Arabic",
-    english: "English",
-    readyTime: "Estimated prep time",
-    orderHint: "After sending, the order goes directly to the coffee truck system.",
-    descriptionFallback: "A featured item from the coffee truck menu.",
-    customerPageSubtitle: "Choose your order from the menu and send it directly.",
-  },
-};
-
 function useViewport() {
   const [width, setWidth] = useState(typeof window !== "undefined" ? window.innerWidth : 1440);
   useEffect(() => {
@@ -282,7 +325,6 @@ function useViewport() {
 const styles = {
   app: {
     minHeight: "100vh",
-    background: "radial-gradient(circle at top, rgba(200,169,107,0.10), transparent 18%), linear-gradient(to bottom, #f8f6f1, #ffffff, #f3f4f6)",
     color: "#0f172a",
     direction: "rtl",
     fontFamily: "Arial, sans-serif",
@@ -322,7 +364,7 @@ const styles = {
     padding: "12px 14px",
     borderRadius: 14,
     border: "1px solid #d1d5db",
-    fontSize: 14,
+    fontSize: 16,
     boxSizing: "border-box",
     background: "#fff",
   },
@@ -332,7 +374,7 @@ const styles = {
     padding: "12px 14px",
     borderRadius: 14,
     border: "1px solid #d1d5db",
-    fontSize: 14,
+    fontSize: 16,
     boxSizing: "border-box",
     resize: "vertical",
     background: "#fff",
@@ -355,6 +397,7 @@ const styles = {
     fontSize: 13,
     fontWeight: 700,
     cursor: "pointer",
+    whiteSpace: "nowrap",
   },
 };
 
@@ -396,7 +439,7 @@ export default function App() {
   const [orders, setOrders] = useState([]);
   const [cart, setCart] = useState([]);
   const [search, setSearch] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("الكل");
+  const [selectedCategory, setSelectedCategory] = useState("");
   const [customerName, setCustomerName] = useState("");
   const [phone, setPhone] = useState("");
   const [notes, setNotes] = useState("");
@@ -404,11 +447,14 @@ export default function App() {
   const [brand, setBrand] = useState(defaultBrand);
   const [rolePasswords, setRolePasswords] = useState(defaultRolePasswords);
   const [newItemName, setNewItemName] = useState("");
+  const [newItemNameEn, setNewItemNameEn] = useState("");
   const [newItemCategory, setNewItemCategory] = useState("");
+  const [newItemCategoryEn, setNewItemCategoryEn] = useState("");
   const [newItemPrice, setNewItemPrice] = useState("");
   const [newItemImage, setNewItemImage] = useState("");
   const [newItemImagesText, setNewItemImagesText] = useState("");
   const [newItemDescription, setNewItemDescription] = useState("");
+  const [newItemDescriptionEn, setNewItemDescriptionEn] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
@@ -426,7 +472,6 @@ export default function App() {
   const [soundEnabled, setSoundEnabled] = useState(false);
   const previousOrderCount = useRef(null);
   const t = translations[language] || translations.ar;
-
   const [roleSession, setRoleSession] = useState(() => sessionStorage.getItem("krs-admin-unlocked") === "true");
 
   useEffect(() => {
@@ -437,7 +482,11 @@ export default function App() {
     const setupData = async () => {
       try {
         const currentMenu = await getDocs(collection(db, "menu"));
-        if (currentMenu.empty) for (const item of defaultMenu) await addDoc(collection(db, "menu"), { ...item, createdAt: serverTimestamp() });
+        if (currentMenu.empty) {
+          for (const item of defaultMenu) {
+            await addDoc(collection(db, "menu"), { ...item, createdAt: serverTimestamp() });
+          }
+        }
         await setDoc(doc(db, "settings", "brand"), defaultBrand, { merge: true });
         await setDoc(doc(db, "settings", "roles"), defaultRolePasswords, { merge: true });
       } catch (error) {
@@ -489,12 +538,30 @@ export default function App() {
     previousOrderCount.current = orders.length;
   }, [orders.length, mode, soundEnabled]);
 
-  const categories = useMemo(() => ["الكل", ...Array.from(new Set(menu.map((item) => item.category).filter(Boolean)))], [menu]);
+  useEffect(() => {
+    setSelectedCategory(t.all);
+  }, [language]);
+
+  const categories = useMemo(() => {
+    const cats = Array.from(new Set(menu.map((item) => getDisplayCategory(item, language)).filter(Boolean)));
+    return [t.all, ...cats];
+  }, [menu, language, t.all]);
+
   const availableMenu = useMemo(() => menu.filter((item) => {
-    const matchesSearch = safeIncludes(item.name, search) || safeIncludes(item.category, search);
-    const matchesCategory = selectedCategory === "الكل" || item.category === selectedCategory;
+    const itemName = getDisplayName(item, language);
+    const itemCategory = getDisplayCategory(item, language);
+    const matchesSearch =
+      safeIncludes(itemName, search) ||
+      safeIncludes(itemCategory, search) ||
+      safeIncludes(item.nameEn, search) ||
+      safeIncludes(item.nameAr, search) ||
+      safeIncludes(item.name, search) ||
+      safeIncludes(item.categoryEn, search) ||
+      safeIncludes(item.categoryAr, search) ||
+      safeIncludes(item.category, search);
+    const matchesCategory = selectedCategory === t.all || !selectedCategory || itemCategory === selectedCategory;
     return item.available && matchesSearch && matchesCategory;
-  }), [menu, search, selectedCategory]);
+  }), [menu, search, selectedCategory, language, t.all]);
 
   const cartTotal = useMemo(() => cart.reduce((sum, item) => sum + Number(item.price) * item.qty, 0), [cart]);
   const totalOrders = orders.length;
@@ -525,8 +592,8 @@ export default function App() {
   const primaryColor = brand.primaryColor || "#111111";
   const accentColor = brand.accentColor || "#c8a96b";
   const isDark = theme === "dark";
-  const pageBg = isDark ? "radial-gradient(circle at top, rgba(200,169,107,0.12), transparent 18%), linear-gradient(to bottom, #0b0b0c, #121316, #0b0b0c)" : "radial-gradient(circle at top, rgba(200,169,107,0.10), transparent 18%), linear-gradient(to bottom, #f8f6f1, #ffffff, #f3f4f6)";
-  const panelBg = isDark ? "rgba(18,18,20,0.92)" : "rgba(255,255,255,0.92)";
+  const pageBg = isDark ? "linear-gradient(to bottom, #0b0b0c, #121316, #0b0b0c)" : "linear-gradient(to bottom, #f8f6f1, #ffffff, #f3f4f6)";
+  const panelBg = isDark ? "rgba(18,18,20,0.94)" : "rgba(255,255,255,0.94)";
   const textColor = isDark ? "#f8fafc" : "#0f172a";
   const mutedColor = isDark ? "#cbd5e1" : "#64748b";
   const customerGridColumns = isMobile ? "1fr" : "minmax(0, 1.8fr) minmax(320px, 0.95fr)";
@@ -538,7 +605,17 @@ export default function App() {
   const addToCart = (item) => setCart((prev) => {
     const exists = prev.find((p) => p.id === item.id);
     if (exists) return prev.map((p) => (p.id === item.id ? { ...p, qty: p.qty + 1 } : p));
-    return [...prev, { id: item.id, name: item.name, price: Number(item.price), qty: 1, image: getItemImages(item)[0] || "", images: getItemImages(item), itemNote: "" }];
+    return [...prev, {
+      id: item.id,
+      name: getDisplayName(item, language),
+      nameAr: item.nameAr || item.name || "",
+      nameEn: item.nameEn || item.name || "",
+      price: Number(item.price),
+      qty: 1,
+      image: getItemImages(item)[0] || "",
+      images: getItemImages(item),
+      itemNote: "",
+    }];
   });
 
   const updateQty = (id, delta) => setCart((prev) => prev.map((i) => (i.id === id ? { ...i, qty: i.qty + delta } : i)).filter((i) => i.qty > 0));
@@ -671,21 +748,30 @@ export default function App() {
       if (newItemImage && !images.includes(newItemImage)) images.unshift(newItemImage);
       await addDoc(collection(db, "menu"), {
         name: newItemName,
+        nameAr: newItemName,
+        nameEn: newItemNameEn || newItemName,
         category: newItemCategory,
+        categoryAr: newItemCategory,
+        categoryEn: newItemCategoryEn || newItemCategory,
         price: Number(newItemPrice),
         available: true,
         prepTime: 5,
         image: images[0] || newItemImage,
         images,
         description: newItemDescription,
+        descriptionAr: newItemDescription,
+        descriptionEn: newItemDescriptionEn || newItemDescription,
         createdAt: serverTimestamp(),
       });
       setNewItemName("");
+      setNewItemNameEn("");
       setNewItemCategory("");
+      setNewItemCategoryEn("");
       setNewItemPrice("");
       setNewItemImage("");
       setNewItemImagesText("");
       setNewItemDescription("");
+      setNewItemDescriptionEn("");
     } catch (error) {
       setErrorMessage("فشل إضافة الصنف الجديد");
       console.error(error);
@@ -751,10 +837,22 @@ export default function App() {
     win.print();
   };
 
-  const openGallery = (item, startIndex = 0) => setGallery({ title: item.name, images: getItemImages(item), index: startIndex });
+  const openGallery = (item, startIndex = 0) => setGallery({ title: getDisplayName(item, language), images: getItemImages(item), index: startIndex });
   const closeGallery = () => setGallery(null);
   const nextGallery = () => setGallery((g) => g ? { ...g, index: (g.index + 1) % g.images.length } : g);
   const prevGallery = () => setGallery((g) => g ? { ...g, index: (g.index - 1 + g.images.length) % g.images.length } : g);
+
+  const iconButtonStyle = {
+    ...styles.buttonSecondary,
+    width: 46,
+    height: 46,
+    borderRadius: 999,
+    padding: 0,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    background: "rgba(255,255,255,0.92)",
+  };
 
   const InternalHeader = () => (
     <>
@@ -787,50 +885,54 @@ export default function App() {
   );
 
   const CustomerView = () => (
-    <div style={{ display: "grid", gridTemplateColumns: customerGridColumns, gap: 24, alignItems: "start" }}>
-      <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-        <div style={{ ...styles.card, background: panelBg, color: textColor, padding: 0, overflow: "hidden" }}>
-          <div style={{ background: `linear-gradient(135deg, ${primaryColor} 0%, #262626 72%, ${accentColor} 100%)`, color: "white", padding: isMobile ? 18 : 24 }}>
+    <div style={{ display: "grid", gridTemplateColumns: customerGridColumns, gap: isMobile ? 16 : 24, alignItems: "start", paddingBottom: isMobile ? 120 : 0 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: isMobile ? 16 : 24 }}>
+        <div style={{ ...styles.card, background: panelBg, color: textColor, padding: 0, overflow: "hidden", borderRadius: isMobile ? 24 : 28 }}>
+          <div style={{ background: `linear-gradient(135deg, ${primaryColor} 0%, #262626 72%, ${accentColor} 100%)`, color: "white", padding: isMobile ? 16 : 24 }}>
             <div style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 16, flex: 1, minWidth: 0 }}>
-                {brand.logoUrl ? <img src={brand.logoUrl} alt={brand.brandName} style={{ width: isMobile ? 60 : 74, height: isMobile ? 60 : 74, objectFit: "cover", borderRadius: 22, border: "2px solid rgba(255,255,255,0.25)" }} /> : <div style={{ width: isMobile ? 60 : 74, height: isMobile ? 60 : 74, borderRadius: 22, background: "rgba(255,255,255,0.12)", display: "flex", alignItems: "center", justifyContent: "center", border: "2px solid rgba(255,255,255,0.2)", flexShrink: 0 }}><Store size={30} /></div>}
+              <div style={{ display: "flex", alignItems: "center", gap: 14, flex: 1, minWidth: 0 }}>
+                {brand.logoUrl ? <img src={brand.logoUrl} alt={brand.brandName} style={{ width: isMobile ? 58 : 74, height: isMobile ? 58 : 74, objectFit: "cover", borderRadius: 20, border: "2px solid rgba(255,255,255,0.25)" }} /> : <div style={{ width: isMobile ? 58 : 74, height: isMobile ? 58 : 74, borderRadius: 20, background: "rgba(255,255,255,0.12)", display: "flex", alignItems: "center", justifyContent: "center", border: "2px solid rgba(255,255,255,0.2)", flexShrink: 0 }}><Store size={30} /></div>}
                 <div style={{ minWidth: 0 }}>
                   <div style={{ display: "inline-flex", gap: 8, alignItems: "center", background: "rgba(255,255,255,0.1)", padding: "8px 12px", borderRadius: 999, fontSize: 13, maxWidth: "100%" }}><Store size={15} /><span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{brand.brandName}</span></div>
                   <h2 style={{ margin: "14px 0 8px", fontSize: isMobile ? 24 : 34 }}>{brand.heroTitle}</h2>
                   <p style={{ margin: 0, color: "rgba(255,255,255,0.78)", lineHeight: 1.8, maxWidth: 720, fontSize: isMobile ? 14 : 16 }}>{brand.heroSubtitle}</p>
                 </div>
               </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 10, width: isMobile ? "100%" : 280 }}>
-                <div style={{ background: "rgba(255,255,255,0.08)", borderRadius: 22, padding: 18 }}><div style={{ fontSize: 13, color: "rgba(255,255,255,0.72)" }}>{t.readyTime}</div><div style={{ fontSize: 28, fontWeight: 800, marginTop: 8 }}>5 - 12 {language === "ar" ? "دقيقة" : "min"}</div></div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                  <button onClick={() => setTheme(theme === "dark" ? "light" : "dark")} style={{ ...styles.buttonSecondary, background: "rgba(255,255,255,0.92)" }}>{t.theme}: {isDark ? t.dark : t.light}</button>
-                  <button onClick={() => setLanguage(language === "ar" ? "en" : "ar")} style={{ ...styles.buttonSecondary, background: "rgba(255,255,255,0.92)" }}>{t.language}: {language === "ar" ? t.arabic : t.english}</button>
-                </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <button aria-label="theme" onClick={() => setTheme(theme === "dark" ? "light" : "dark")} style={iconButtonStyle}>{isDark ? <Sun size={20} /> : <Moon size={20} />}</button>
+                <button aria-label="language" onClick={() => setLanguage(language === "ar" ? "en" : "ar")} style={iconButtonStyle}><Languages size={18} /><span style={{ fontSize: 12, fontWeight: 900 }}>{language === "ar" ? "EN" : "ع"}</span></button>
               </div>
             </div>
           </div>
         </div>
-        <div style={{ ...styles.card, background: panelBg, color: textColor }}>
-          <div style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: isMobile ? "stretch" : "center", flexWrap: "wrap", marginBottom: 18 }}>
+
+        <div style={{ ...styles.card, background: panelBg, color: textColor, borderRadius: isMobile ? 24 : 28 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: isMobile ? "stretch" : "center", flexWrap: "wrap", marginBottom: 16 }}>
             <div><div style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 800, fontSize: isMobile ? 22 : 28, marginBottom: 6 }}><ClipboardList size={20} /> {t.menu}</div><div style={{ color: mutedColor }}>{t.customerPageSubtitle}</div></div>
-            <div style={{ minWidth: isMobile ? "100%" : 260 }}><div style={{ position: "relative" }}><Search size={16} style={{ position: "absolute", top: 14, right: language === "ar" ? 12 : "auto", left: language === "en" ? 12 : "auto", color: "#94a3b8" }} /><input style={{ ...styles.input, paddingRight: language === "ar" ? 36 : 14, paddingLeft: language === "en" ? 36 : 14, background: isDark ? "#111827" : "#fff", color: textColor }} value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t.searchMenu} /></div></div>
+            <div style={{ minWidth: isMobile ? "100%" : 260 }}><div style={{ position: "relative" }}><Search size={16} style={{ position: "absolute", top: 15, right: language === "ar" ? 12 : "auto", left: language === "en" ? 12 : "auto", color: "#94a3b8" }} /><input style={{ ...styles.input, paddingRight: language === "ar" ? 38 : 14, paddingLeft: language === "en" ? 38 : 14, background: isDark ? "#111827" : "#fff", color: textColor }} value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t.searchMenu} /></div></div>
           </div>
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 20, overflowX: "auto", paddingBottom: 4 }}>{categories.map((category) => <button key={category} onClick={() => setSelectedCategory(category)} style={{ ...styles.categoryChip, background: selectedCategory === category ? primaryColor : isDark ? "#111827" : "#f5f5f4", color: selectedCategory === category ? "white" : textColor, border: selectedCategory === category ? `1px solid ${primaryColor}` : "1px solid #e7e5e4", whiteSpace: "nowrap" }}>{category}</button>)}</div>
-          <div style={{ display: "grid", gridTemplateColumns: customerMenuGridColumns, gap: 18 }}>
+          <div style={{ display: "flex", gap: 10, flexWrap: "nowrap", marginBottom: 18, overflowX: "auto", paddingBottom: 6 }}>
+            {categories.map((category) => <button key={category} onClick={() => setSelectedCategory(category)} style={{ ...styles.categoryChip, background: selectedCategory === category ? primaryColor : isDark ? "#111827" : "#f5f5f4", color: selectedCategory === category ? "white" : textColor, border: selectedCategory === category ? `1px solid ${primaryColor}` : "1px solid #e7e5e4" }}>{category}</button>)}
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: customerMenuGridColumns, gap: isMobile ? 14 : 18 }}>
             {availableMenu.map((item) => {
               const images = getItemImages(item);
-              return <div key={item.id} style={{ ...styles.menuCard, background: isDark ? "#111827" : "#fff", color: textColor }}>
-                <div style={{ position: "relative" }}><img src={images[0]} alt={item.name} style={{ ...styles.menuImage, height: isMobile ? 200 : 180 }} onClick={() => openGallery(item, 0)} />{images.length > 1 ? <div style={{ position: "absolute", bottom: 10, left: 10, background: "rgba(0,0,0,0.62)", color: "white", borderRadius: 999, padding: "6px 10px", fontSize: 12 }}>{images.length} صور</div> : null}</div>
+              const itemName = getDisplayName(item, language);
+              const itemCategory = getDisplayCategory(item, language);
+              const itemDescription = getDisplayDescription(item, language, t.descriptionFallback);
+              return <div key={item.id} style={{ ...styles.menuCard, background: isDark ? "#111827" : "#fff", color: textColor, borderRadius: isMobile ? 22 : 26 }}>
+                <div style={{ position: "relative" }}><img src={images[0]} alt={itemName} style={{ ...styles.menuImage, height: isMobile ? 210 : 180 }} onClick={() => openGallery(item, 0)} />{images.length > 1 ? <div style={{ position: "absolute", bottom: 10, left: 10, background: "rgba(0,0,0,0.62)", color: "white", borderRadius: 999, padding: "6px 10px", fontSize: 12 }}>{images.length} صور</div> : null}</div>
                 {images.length > 1 ? <div style={{ display: "flex", gap: 6, padding: "10px 12px 0", overflowX: "auto" }}>{images.slice(0, 5).map((img, idx) => <img key={img + idx} src={img} alt="" onClick={() => openGallery(item, idx)} style={{ width: 46, height: 46, borderRadius: 10, objectFit: "cover", cursor: "pointer", border: idx === 0 ? `2px solid ${accentColor}` : "1px solid #e5e7eb" }} />)}</div> : null}
-                <div style={{ padding: 16 }}><div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}><div><div style={{ fontSize: isMobile ? 18 : 20, fontWeight: 800 }}>{item.name}</div><div style={{ color: mutedColor, marginTop: 6 }}>{item.category}</div></div><div style={{ fontWeight: 800, fontSize: 16, color: primaryColor, whiteSpace: "nowrap" }}>{money(item.price)}</div></div><div style={{ color: mutedColor, marginTop: 10, lineHeight: 1.7, minHeight: 48, fontSize: 14 }}>{item.description || t.descriptionFallback}</div><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 14, gap: 10 }}><div style={{ color: mutedColor, fontSize: 13 }}>{t.prepTime}: {item.prepTime} {t.minutes}</div><button style={{ ...styles.button, background: primaryColor, minWidth: 94 }} onClick={() => addToCart(item)}>{t.add}</button></div></div>
+                <div style={{ padding: 16 }}><div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}><div><div style={{ fontSize: isMobile ? 18 : 20, fontWeight: 800 }}>{itemName}</div><div style={{ color: mutedColor, marginTop: 6 }}>{itemCategory}</div></div><div style={{ fontWeight: 800, fontSize: 16, color: primaryColor, whiteSpace: "nowrap" }}>{money(item.price)}</div></div><div style={{ color: mutedColor, marginTop: 10, lineHeight: 1.7, minHeight: 48, fontSize: 14 }}>{itemDescription}</div><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 14, gap: 10 }}><div style={{ color: mutedColor, fontSize: 13 }}>{t.prepTime}: {item.prepTime} {t.minutes}</div><button style={{ ...styles.button, background: primaryColor, minWidth: 94 }} onClick={() => addToCart(item)}>{t.add}</button></div></div>
               </div>;
             })}
           </div>
         </div>
       </div>
+
       <div>
-        <div style={{ ...styles.card, background: panelBg, color: textColor, position: isMobile ? "relative" : "sticky", top: 16 }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, fontWeight: 800, fontSize: isMobile ? 22 : 28, marginBottom: 16 }}><span style={{ display: "flex", alignItems: "center", gap: 8 }}><ShoppingCart size={20} /> {t.cart}</span><span style={{ fontSize: 14, color: mutedColor }}>{cart.length} {language === "ar" ? "صنف" : "item"}</span></div>
+        <div style={{ ...styles.card, background: panelBg, color: textColor, position: isMobile ? "relative" : "sticky", top: 16, borderRadius: isMobile ? 24 : 28 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, fontWeight: 800, fontSize: isMobile ? 22 : 28, marginBottom: 16 }}><span style={{ display: "flex", alignItems: "center", gap: 8 }}><ShoppingCart size={20} /> {t.cart}</span><span style={{ fontSize: 14, color: mutedColor }}>{cart.length} {t.item}</span></div>
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             {cart.length === 0 ? <div style={{ border: "1px solid #e5e7eb", borderRadius: 18, padding: 16, color: mutedColor, background: isDark ? "#0f172a" : "#fafaf9" }}>{t.emptyCart}</div> : cart.map((item) => <div key={item.id} style={{ border: "1px solid #e5e7eb", borderRadius: 18, padding: 16 }}><div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>{item.image ? <img src={item.image} alt={item.name} style={{ width: 62, height: 62, borderRadius: 14, objectFit: "cover", flexShrink: 0 }} /> : null}<div style={{ flex: 1, minWidth: 0 }}><div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", flexWrap: "wrap" }}><div style={{ minWidth: 0 }}><div style={{ fontWeight: 700 }}>{item.name}</div><div style={{ color: mutedColor, marginTop: 4 }}>{money(item.price * item.qty)}</div></div><div style={{ display: "flex", gap: 8, alignItems: "center" }}><button style={styles.buttonSecondary} onClick={() => updateQty(item.id, -1)}><Minus size={16} /></button><div style={{ minWidth: 18, textAlign: "center" }}>{item.qty}</div><button style={styles.buttonSecondary} onClick={() => updateQty(item.id, 1)}><Plus size={16} /></button></div></div><div style={{ marginTop: 10 }}><label style={{ display: "block", marginBottom: 6, color: mutedColor, fontSize: 13 }}>{t.itemNote}</label><textarea style={{ ...styles.textarea, minHeight: 76, background: isDark ? "#111827" : "#fff", color: textColor }} value={item.itemNote || ""} onChange={(e) => updateCartItemNote(item.id, e.target.value)} placeholder={language === "ar" ? "مثال: بدون مخلل / زيادة ثلج / حار خفيف" : "Example: no pickles / extra ice / less spicy"} /></div></div></div></div>)}
             <div style={{ border: "1px solid #e5e7eb", background: isDark ? "#0f172a" : "#fafaf9", borderRadius: 18, padding: 16, display: "flex", justifyContent: "space-between", alignItems: "center" }}><span>{t.notifyReady}</span><input type="checkbox" checked={notifyCustomer} onChange={(e) => setNotifyCustomer(e.target.checked)} /></div>
@@ -847,7 +949,7 @@ export default function App() {
     <div>
       <div style={{ display: "grid", gridTemplateColumns: metricGridColumns, gap: 16, marginBottom: 24 }}><MetricCard label="طلبات جديدة" value={newOrders} accent={accentColor} /><MetricCard label="قيد التحضير" value={preparingOrders} accent={primaryColor} /><MetricCard label="جاهز" value={readyOrders} accent="#059669" /><MetricCard label="تم التسليم" value={deliveredOrders} accent="#6b7280" /></div>
       <div style={styles.card}><div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "center" }}><SectionTitle icon={mode === "cashier" ? <LayoutDashboard size={20} /> : mode === "kitchen" ? <ChefHat size={20} /> : <Bell size={20} />} title={mode === "cashier" ? "لوحة الاستقبال داخل الكوفي" : mode === "kitchen" ? "شاشة المطبخ والتحضير" : "شاشة الاستلام والنداء"} sub={mode === "cashier" ? "هذه الشاشة تستقبل الطلبات من جوالات العملاء مباشرة" : mode === "kitchen" ? "تعرض الطلبات المطلوب تحضيرها فقط" : "تعرض الطلبات الجاهزة للتسليم"} /><div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}><input style={{ ...styles.input, width: isMobile ? "100%" : 260 }} value={searchOrder} onChange={(e) => setSearchOrder(e.target.value)} placeholder="بحث برقم الطلب أو الاسم أو الهاتف" /></div></div>
-        <div style={{ display: "grid", gridTemplateColumns: orderGridColumns, gap: 16, marginTop: 20 }}>{visibleOrders.map((order) => <div key={order.id} style={{ border: "1px solid #e5e7eb", borderRadius: 24, padding: 18, boxShadow: "0 4px 14px rgba(0,0,0,0.04)" }}><div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}><div><div style={{ fontSize: 24, fontWeight: 800 }}>{order.orderCode || order.id}</div><div style={{ display: "flex", alignItems: "center", gap: 6, color: "#475569", marginTop: 8 }}><User size={16} /> {order.customerName}</div><div style={{ display: "flex", alignItems: "center", gap: 6, color: "#475569", marginTop: 6 }}><Phone size={16} /> {order.phone}</div><div style={{ display: "flex", alignItems: "center", gap: 6, color: "#94a3b8", marginTop: 6, fontSize: 14 }}><Clock3 size={16} /> {order.createdAtLabel || "الآن"}</div></div><div style={{ background: statusMap[order.status]?.bg, color: statusMap[order.status]?.color, border: `1px solid ${statusMap[order.status]?.border}`, padding: "8px 12px", borderRadius: 999, fontWeight: 700 }}>{statusMap[order.status]?.label}</div></div><div style={{ border: "1px solid #e5e7eb", background: "#fafaf9", borderRadius: 18, padding: 16, marginTop: 16 }}>{(order.items || []).map((item, idx) => <div key={`${order.id}-${idx}`} style={{ borderBottom: idx !== (order.items || []).length - 1 ? "1px solid #e5e7eb" : "none", paddingBottom: 8, marginBottom: 8 }}><div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6, gap: 12 }}><span>{item.name} × {item.qty}</span><span style={{ fontWeight: 700, whiteSpace: "nowrap" }}>{money(Number(item.price) * item.qty)}</span></div>{item.itemNote ? <div style={{ color: "#64748b", fontSize: 13 }}>ملاحظة الصنف: {item.itemNote}</div> : null}</div>)}</div>{order.notes ? <div style={{ border: "1px solid #e5e7eb", borderRadius: 18, padding: 14, marginTop: 12 }}>ملاحظات عامة: {order.notes}</div> : null}<div style={{ background: primaryColor, color: "white", borderRadius: 18, padding: 16, display: "flex", justifyContent: "space-between", fontWeight: 800, marginTop: 12 }}><span>الإجمالي</span><span>{money(order.total)}</span></div><div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4, 1fr)", gap: 8, marginTop: 12 }}><button style={styles.buttonSecondary} onClick={() => setOrderStatus(order.id, "new")}>جديد</button><button style={styles.buttonSecondary} onClick={() => setOrderStatus(order.id, "preparing")}>تحضير</button><button style={styles.buttonSecondary} onClick={() => setOrderStatus(order.id, "ready")}>جاهز</button><button style={styles.buttonSecondary} onClick={() => setOrderStatus(order.id, "delivered")}>تسليم</button></div><button style={{ ...styles.button, background: "#25D366", width: "100%", marginTop: 10, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }} onClick={() => markReadyAndWhatsApp(order)}><MessageCircle size={16} /> جاهز + إرسال واتساب</button>{order.status === "ready" ? <button style={{ ...styles.buttonSecondary, width: "100%", marginTop: 8 }} onClick={() => sendReadyWhatsApp(order)}>إرسال واتساب فقط</button> : null}</div>)}</div>
+        <div style={{ display: "grid", gridTemplateColumns: orderGridColumns, gap: 16, marginTop: 20 }}>{visibleOrders.map((order) => <div key={order.id} style={{ border: "1px solid #e5e7eb", borderRadius: 24, padding: 18, boxShadow: "0 4px 14px rgba(0,0,0,0.04)" }}><div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}><div><div style={{ fontSize: 24, fontWeight: 800 }}>{order.orderCode || order.id}</div><div style={{ display: "flex", alignItems: "center", gap: 6, color: "#475569", marginTop: 8 }}><User size={16} /> {order.customerName}</div><div style={{ display: "flex", alignItems: "center", gap: 6, color: "#475569", marginTop: 6 }}><Phone size={16} /> {order.phone}</div><div style={{ display: "flex", alignItems: "center", gap: 6, color: "#94a3b8", marginTop: 6, fontSize: 14 }}><Clock3 size={16} /> {order.createdAtLabel || "الآن"}</div></div><div style={{ background: statusMap[order.status]?.bg, color: statusMap[order.status]?.color, border: `1px solid ${statusMap[order.status]?.border}`, padding: "8px 12px", borderRadius: 999, fontWeight: 700 }}>{language === "en" ? statusMap[order.status]?.labelEn : statusMap[order.status]?.label}</div></div><div style={{ border: "1px solid #e5e7eb", background: "#fafaf9", borderRadius: 18, padding: 16, marginTop: 16 }}>{(order.items || []).map((item, idx) => <div key={`${order.id}-${idx}`} style={{ borderBottom: idx !== (order.items || []).length - 1 ? "1px solid #e5e7eb" : "none", paddingBottom: 8, marginBottom: 8 }}><div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6, gap: 12 }}><span>{item.name} × {item.qty}</span><span style={{ fontWeight: 700, whiteSpace: "nowrap" }}>{money(Number(item.price) * item.qty)}</span></div>{item.itemNote ? <div style={{ color: "#64748b", fontSize: 13 }}>ملاحظة الصنف: {item.itemNote}</div> : null}</div>)}</div>{order.notes ? <div style={{ border: "1px solid #e5e7eb", borderRadius: 18, padding: 14, marginTop: 12 }}>ملاحظات عامة: {order.notes}</div> : null}<div style={{ background: primaryColor, color: "white", borderRadius: 18, padding: 16, display: "flex", justifyContent: "space-between", fontWeight: 800, marginTop: 12 }}><span>الإجمالي</span><span>{money(order.total)}</span></div><div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4, 1fr)", gap: 8, marginTop: 12 }}><button style={styles.buttonSecondary} onClick={() => setOrderStatus(order.id, "new")}>جديد</button><button style={styles.buttonSecondary} onClick={() => setOrderStatus(order.id, "preparing")}>تحضير</button><button style={styles.buttonSecondary} onClick={() => setOrderStatus(order.id, "ready")}>جاهز</button><button style={styles.buttonSecondary} onClick={() => setOrderStatus(order.id, "delivered")}>تسليم</button></div><button style={{ ...styles.button, background: "#25D366", width: "100%", marginTop: 10, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }} onClick={() => markReadyAndWhatsApp(order)}><MessageCircle size={16} /> جاهز + إرسال واتساب</button>{order.status === "ready" ? <button style={{ ...styles.buttonSecondary, width: "100%", marginTop: 8 }} onClick={() => sendReadyWhatsApp(order)}>إرسال واتساب فقط</button> : null}</div>)}</div>
       </div>
     </div>
   );
@@ -862,24 +964,24 @@ export default function App() {
         <div style={styles.card}><SectionTitle icon={<Lock size={20} />} title="كلمة مرور الإدارة" sub="الباسورد فقط على الإدارة" /><div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 12, marginTop: 18 }}><div><label style={{ display: "block", marginBottom: 6, color: "#64748b" }}>كلمة مرور الإدارة</label><input style={styles.input} type="password" value={rolePasswords.admin || ""} onChange={(e) => setRolePasswords((prev) => ({ ...prev, admin: e.target.value }))} /></div><div><button style={{ ...styles.button, background: primaryColor }} onClick={saveRolePasswords}>حفظ كلمة مرور الإدارة</button></div></div></div>
         <div style={styles.card}><SectionTitle icon={<Receipt size={20} />} title="تقرير المبيعات اليومية" sub="داخل الإدارة مع إمكانية اختيار التاريخ والطباعة" /><div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr auto", gap: 12, marginTop: 18, alignItems: "end" }}><div><label style={{ display: "block", marginBottom: 6, color: "#64748b" }}>تاريخ التقرير</label><input type="date" style={styles.input} value={reportDate} onChange={(e) => setReportDate(e.target.value)} /></div><button style={{ ...styles.button, background: primaryColor, display: "flex", alignItems: "center", gap: 8, justifyContent: "center" }} onClick={printDailyReport}><Printer size={16} /> طباعة التقرير</button></div><div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(3, 1fr)", gap: 12, marginTop: 16 }}><MetricCard label="مبيعات اليوم" value={money(todaySales)} accent={accentColor} /><MetricCard label="عدد الطلبات" value={todayOrders.length} accent={primaryColor} /><MetricCard label="طلبات مسلّمة" value={todayDeliveredOrders.length} accent="#059669" /></div></div>
       </div>
-      <div style={styles.card}><SectionTitle icon={<Package size={20} />} title="إدارة المنيو والصور" sub="يمكن إضافة أكثر من صورة للمنتج الواحد" /><div style={{ marginTop: 20, display: "flex", flexDirection: "column", gap: 16 }}>{menu.map((item) => { const images = getItemImages(item); return <div key={item.id} style={{ border: "1px solid #e5e7eb", borderRadius: 24, padding: 16, display: "grid", gridTemplateColumns: isMobile ? "1fr" : "180px 1fr", gap: 16, alignItems: "start" }}><div><img src={images[0]} alt={item.name} style={{ width: "100%", height: 140, borderRadius: 18, objectFit: "cover", marginBottom: 10 }} /><div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>{images.slice(0, 6).map((img, idx) => <img key={img + idx} src={img} alt="" style={{ width: 38, height: 38, borderRadius: 8, objectFit: "cover", border: "1px solid #e5e7eb" }} />)}</div><div style={{ display: "flex", gap: 8, alignItems: "center", justifyContent: "space-between" }}><div style={{ background: item.available ? "#d1fae5" : "#ffe4e6", color: item.available ? "#065f46" : "#9f1239", padding: "8px 12px", borderRadius: 999, fontWeight: 700, fontSize: 13 }}>{item.available ? "متاح" : "غير متاح"}</div><button style={styles.buttonSecondary} onClick={() => toggleAvailability(item.id, item.available)}>{item.available ? "إيقاف" : "تفعيل"}</button></div></div><div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 12 }}><div><label style={{ display: "block", marginBottom: 6, color: "#64748b", fontSize: 13 }}>اسم الصنف</label><input style={styles.input} value={item.name || ""} onChange={(e) => updateMenuItemField(item.id, "name", e.target.value)} /></div><div><label style={{ display: "block", marginBottom: 6, color: "#64748b", fontSize: 13 }}>التصنيف</label><input style={styles.input} value={item.category || ""} onChange={(e) => updateMenuItemField(item.id, "category", e.target.value)} /></div><div><label style={{ display: "block", marginBottom: 6, color: "#64748b", fontSize: 13 }}>السعر</label><input style={styles.input} value={item.price || ""} onChange={(e) => updateMenuItemField(item.id, "price", Number(e.target.value || 0))} /></div><div><label style={{ display: "block", marginBottom: 6, color: "#64748b", fontSize: 13 }}>وقت التحضير</label><input style={styles.input} value={item.prepTime || ""} onChange={(e) => updateMenuItemField(item.id, "prepTime", Number(e.target.value || 0))} /></div><div style={{ gridColumn: "1 / -1" }}><label style={{ display: "block", marginBottom: 6, color: "#64748b", fontSize: 13 }}>روابط الصور - كل رابط في سطر</label><textarea style={{ ...styles.textarea, minHeight: 90 }} value={images.join("\n")} onChange={(e) => { const arr = normalizeImages(e.target.value); updateDoc(doc(db, "menu", item.id), { images: arr, image: arr[0] || "", updatedAt: serverTimestamp() }); }} /><div style={{ display: "flex", gap: 10, marginTop: 10, alignItems: "center", flexWrap: "wrap" }}><label style={{ ...styles.buttonSecondary, display: "inline-flex", alignItems: "center", gap: 8 }}><Upload size={16} /> رفع صورة وإضافتها للمنتج<input type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => uploadImageToExistingItem(item, e.target.files?.[0])} /></label>{isUploadingImage ? <span style={{ color: "#64748b", fontSize: 13 }}>جاري الرفع...</span> : null}<button style={{ ...styles.buttonSecondary, color: "#b91c1c", display: "flex", gap: 8, alignItems: "center" }} onClick={() => deleteMenuItem(item.id)}><Trash2 size={16} /> حذف الصنف</button></div></div><div style={{ gridColumn: "1 / -1" }}><label style={{ display: "block", marginBottom: 6, color: "#64748b", fontSize: 13 }}>وصف الصنف</label><textarea style={{ ...styles.textarea, minHeight: 84 }} value={item.description || ""} onChange={(e) => updateMenuItemField(item.id, "description", e.target.value)} /></div></div></div>})}</div></div>
-      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 24 }}><div style={styles.card}><SectionTitle icon={<Upload size={20} />} title="إضافة صنف جديد" sub="مع أكثر من صورة ووصف ليظهر مباشرة في المنيو" /><div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 18 }}><input style={styles.input} value={newItemName} onChange={(e) => setNewItemName(e.target.value)} placeholder="اسم الصنف" /><input style={styles.input} value={newItemCategory} onChange={(e) => setNewItemCategory(e.target.value)} placeholder="التصنيف" /><input style={styles.input} value={newItemPrice} onChange={(e) => setNewItemPrice(e.target.value)} placeholder="السعر" /><input style={styles.input} value={newItemImage} onChange={(e) => setNewItemImage(e.target.value)} placeholder="رابط الصورة الرئيسية" /><textarea style={{ ...styles.textarea, minHeight: 90 }} value={newItemImagesText} onChange={(e) => setNewItemImagesText(e.target.value)} placeholder="روابط صور إضافية - كل رابط في سطر" /><div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}><label style={{ ...styles.buttonSecondary, display: "inline-flex", alignItems: "center", gap: 8 }}><Upload size={16} /> تحميل صورة مباشرة<input type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => uploadImageAndSetUrl(e.target.files?.[0], (url) => { setNewItemImage(url); setNewItemImagesText((prev) => prev ? `${prev}\n${url}` : url); })} /></label>{isUploadingImage ? <span style={{ color: "#64748b", fontSize: 13 }}>جاري رفع الصورة...</span> : null}</div><textarea style={styles.textarea} value={newItemDescription} onChange={(e) => setNewItemDescription(e.target.value)} placeholder="وصف الصنف" /><button style={{ ...styles.button, background: primaryColor }} onClick={addMenuItem}>إضافة إلى المنيو</button></div></div><div style={styles.card}><SectionTitle icon={<ImageIcon size={20} />} title="ملاحظات النسخة" sub="التحديث الجديد" /><div style={{ marginTop: 18, color: "#475569", lineHeight: 2 }}>• إشعار صوتي عند وصول طلب جديد للكاشير والمطبخ.<br />• زر جاهز + إرسال واتساب.<br />• Popup للعميل بعد إرسال الطلب مع رقم الطلب.<br />• إمكانية تكبير صور المنتج والتنقل بينها.<br />• إضافة أكثر من صورة لكل منتج.<br />• حذف صنف من الإدارة.<br /></div><div style={{ marginTop: 18 }}><button style={{ ...styles.buttonSecondary, display: "flex", alignItems: "center", gap: 8 }} onClick={logoutAdmin}><LogOut size={16} /> تسجيل خروج الإدارة</button></div></div></div>
+      <div style={styles.card}><SectionTitle icon={<Package size={20} />} title="إدارة المنيو والصور" sub="يمكن إضافة وتعديل المنيو بالعربي والإنجليزي" /><div style={{ marginTop: 20, display: "flex", flexDirection: "column", gap: 16 }}>{menu.map((item) => { const images = getItemImages(item); return <div key={item.id} style={{ border: "1px solid #e5e7eb", borderRadius: 24, padding: 16, display: "grid", gridTemplateColumns: isMobile ? "1fr" : "180px 1fr", gap: 16, alignItems: "start" }}><div><img src={images[0]} alt={item.name} style={{ width: "100%", height: 140, borderRadius: 18, objectFit: "cover", marginBottom: 10 }} /><div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>{images.slice(0, 6).map((img, idx) => <img key={img + idx} src={img} alt="" style={{ width: 38, height: 38, borderRadius: 8, objectFit: "cover", border: "1px solid #e5e7eb" }} />)}</div><div style={{ display: "flex", gap: 8, alignItems: "center", justifyContent: "space-between" }}><div style={{ background: item.available ? "#d1fae5" : "#ffe4e6", color: item.available ? "#065f46" : "#9f1239", padding: "8px 12px", borderRadius: 999, fontWeight: 700, fontSize: 13 }}>{item.available ? "متاح" : "غير متاح"}</div><button style={styles.buttonSecondary} onClick={() => toggleAvailability(item.id, item.available)}>{item.available ? "إيقاف" : "تفعيل"}</button></div></div><div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 12 }}><div><label style={{ display: "block", marginBottom: 6, color: "#64748b", fontSize: 13 }}>اسم الصنف عربي</label><input style={styles.input} value={item.nameAr || item.name || ""} onChange={(e) => { updateMenuItemField(item.id, "nameAr", e.target.value); updateMenuItemField(item.id, "name", e.target.value); }} /></div><div><label style={{ display: "block", marginBottom: 6, color: "#64748b", fontSize: 13 }}>Item name English</label><input style={styles.input} value={item.nameEn || ""} onChange={(e) => updateMenuItemField(item.id, "nameEn", e.target.value)} /></div><div><label style={{ display: "block", marginBottom: 6, color: "#64748b", fontSize: 13 }}>التصنيف عربي</label><input style={styles.input} value={item.categoryAr || item.category || ""} onChange={(e) => { updateMenuItemField(item.id, "categoryAr", e.target.value); updateMenuItemField(item.id, "category", e.target.value); }} /></div><div><label style={{ display: "block", marginBottom: 6, color: "#64748b", fontSize: 13 }}>Category English</label><input style={styles.input} value={item.categoryEn || ""} onChange={(e) => updateMenuItemField(item.id, "categoryEn", e.target.value)} /></div><div><label style={{ display: "block", marginBottom: 6, color: "#64748b", fontSize: 13 }}>السعر</label><input style={styles.input} value={item.price || ""} onChange={(e) => updateMenuItemField(item.id, "price", Number(e.target.value || 0))} /></div><div><label style={{ display: "block", marginBottom: 6, color: "#64748b", fontSize: 13 }}>وقت التحضير</label><input style={styles.input} value={item.prepTime || ""} onChange={(e) => updateMenuItemField(item.id, "prepTime", Number(e.target.value || 0))} /></div><div style={{ gridColumn: "1 / -1" }}><label style={{ display: "block", marginBottom: 6, color: "#64748b", fontSize: 13 }}>روابط الصور - كل رابط في سطر</label><textarea style={{ ...styles.textarea, minHeight: 90 }} value={images.join("\n")} onChange={(e) => { const arr = normalizeImages(e.target.value); updateDoc(doc(db, "menu", item.id), { images: arr, image: arr[0] || "", updatedAt: serverTimestamp() }); }} /><div style={{ display: "flex", gap: 10, marginTop: 10, alignItems: "center", flexWrap: "wrap" }}><label style={{ ...styles.buttonSecondary, display: "inline-flex", alignItems: "center", gap: 8 }}><Upload size={16} /> رفع صورة وإضافتها للمنتج<input type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => uploadImageToExistingItem(item, e.target.files?.[0])} /></label>{isUploadingImage ? <span style={{ color: "#64748b", fontSize: 13 }}>جاري الرفع...</span> : null}<button style={{ ...styles.buttonSecondary, color: "#b91c1c", display: "flex", gap: 8, alignItems: "center" }} onClick={() => deleteMenuItem(item.id)}><Trash2 size={16} /> حذف الصنف</button></div></div><div><label style={{ display: "block", marginBottom: 6, color: "#64748b", fontSize: 13 }}>وصف عربي</label><textarea style={{ ...styles.textarea, minHeight: 84 }} value={item.descriptionAr || item.description || ""} onChange={(e) => { updateMenuItemField(item.id, "descriptionAr", e.target.value); updateMenuItemField(item.id, "description", e.target.value); }} /></div><div><label style={{ display: "block", marginBottom: 6, color: "#64748b", fontSize: 13 }}>English description</label><textarea style={{ ...styles.textarea, minHeight: 84 }} value={item.descriptionEn || ""} onChange={(e) => updateMenuItemField(item.id, "descriptionEn", e.target.value)} /></div></div></div>})}</div></div>
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 24 }}><div style={styles.card}><SectionTitle icon={<Upload size={20} />} title="إضافة صنف جديد" sub="باللغة العربية والإنجليزية" /><div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 18 }}><input style={styles.input} value={newItemName} onChange={(e) => setNewItemName(e.target.value)} placeholder="اسم الصنف بالعربي" /><input style={styles.input} value={newItemNameEn} onChange={(e) => setNewItemNameEn(e.target.value)} placeholder="Item name in English" /><input style={styles.input} value={newItemCategory} onChange={(e) => setNewItemCategory(e.target.value)} placeholder="التصنيف بالعربي" /><input style={styles.input} value={newItemCategoryEn} onChange={(e) => setNewItemCategoryEn(e.target.value)} placeholder="Category in English" /><input style={styles.input} value={newItemPrice} onChange={(e) => setNewItemPrice(e.target.value)} placeholder="السعر" /><input style={styles.input} value={newItemImage} onChange={(e) => setNewItemImage(e.target.value)} placeholder="رابط الصورة الرئيسية" /><textarea style={{ ...styles.textarea, minHeight: 90 }} value={newItemImagesText} onChange={(e) => setNewItemImagesText(e.target.value)} placeholder="روابط صور إضافية - كل رابط في سطر" /><div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}><label style={{ ...styles.buttonSecondary, display: "inline-flex", alignItems: "center", gap: 8 }}><Upload size={16} /> تحميل صورة مباشرة<input type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => uploadImageAndSetUrl(e.target.files?.[0], (url) => { setNewItemImage(url); setNewItemImagesText((prev) => prev ? `${prev}\n${url}` : url); })} /></label>{isUploadingImage ? <span style={{ color: "#64748b", fontSize: 13 }}>جاري رفع الصورة...</span> : null}</div><textarea style={styles.textarea} value={newItemDescription} onChange={(e) => setNewItemDescription(e.target.value)} placeholder="وصف الصنف بالعربي" /><textarea style={styles.textarea} value={newItemDescriptionEn} onChange={(e) => setNewItemDescriptionEn(e.target.value)} placeholder="Item description in English" /><button style={{ ...styles.button, background: primaryColor }} onClick={addMenuItem}>إضافة إلى المنيو</button></div></div><div style={styles.card}><SectionTitle icon={<ImageIcon size={20} />} title="ملاحظات النسخة" sub="التحديث الجديد" /><div style={{ marginTop: 18, color: "#475569", lineHeight: 2 }}>• تم إصلاح مشكلة كتابة الاسم ورقم الهاتف.<br />• المنيو يدعم العربي والإنجليزي.<br />• أزرار الوضع واللغة أصبحت رموز.<br />• واجهة العميل أصبحت أنظف وأقرب لتطبيقات الجوال.<br />• إمكانية تكبير الصور والتنقل بينها.<br /></div><div style={{ marginTop: 18 }}><button style={{ ...styles.buttonSecondary, display: "flex", alignItems: "center", gap: 8 }} onClick={logoutAdmin}><LogOut size={16} /> تسجيل خروج الإدارة</button></div></div></div>
     </div>
   );
 
   return (
     <div style={{ ...styles.app, background: pageBg, color: textColor, direction: language === "ar" ? "rtl" : "ltr" }}>
       <div style={styles.container}>
-        {mode !== "customer" ? <InternalHeader /> : null}
+        {mode !== "customer" ? InternalHeader() : null}
         {errorMessage ? <div style={{ ...styles.card, borderColor: "#fecaca", background: "#fef2f2", color: "#991b1b", marginBottom: 24 }}>{errorMessage}</div> : null}
         {isLoading ? <div style={{ ...styles.card, marginBottom: 24 }}>جاري تحميل البيانات من Firebase...</div> : null}
         {renderAdminGate ? <div style={{ ...styles.card, maxWidth: 560, margin: "0 auto 24px" }}><SectionTitle icon={<Lock size={20} />} title="دخول الإدارة" sub="هذه الصفحة فقط محمية بكلمة مرور" /><div style={{ marginTop: 18 }}><label style={{ display: "block", marginBottom: 8, color: "#64748b" }}>كلمة المرور</label><input style={styles.input} type="password" value={gatePassword} onChange={(e) => setGatePassword(e.target.value)} placeholder="ادخل كلمة المرور" onKeyDown={(e) => { if (e.key === "Enter") submitGate(); }} />{gateError ? <div style={{ marginTop: 10, color: "#b91c1c", fontWeight: 700 }}>{gateError}</div> : null}<div style={{ display: "flex", gap: 10, marginTop: 14 }}><button style={{ ...styles.button, background: primaryColor, flex: 1 }} onClick={submitGate}>دخول</button><button style={{ ...styles.buttonSecondary, flex: 1 }} onClick={() => { setMode("customer"); setGatePassword(""); setGateError(""); }}>رجوع للعميل</button></div></div></div> : null}
-        {!renderAdminGate && mode === "customer" ? <CustomerView /> : null}
-        {!renderAdminGate && (mode === "cashier" || mode === "kitchen" || mode === "pickup") ? <OrdersView /> : null}
-        {!renderAdminGate && mode === "admin" ? <AdminView /> : null}
+        {!renderAdminGate && mode === "customer" ? CustomerView() : null}
+        {!renderAdminGate && (mode === "cashier" || mode === "kitchen" || mode === "pickup") ? OrdersView() : null}
+        {!renderAdminGate && mode === "admin" ? AdminView() : null}
       </div>
       {gallery ? <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.86)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: 18 }} onClick={closeGallery}><div style={{ position: "relative", width: "min(980px, 100%)", maxHeight: "92vh" }} onClick={(e) => e.stopPropagation()}><button onClick={closeGallery} style={{ position: "absolute", top: -8, right: -8, zIndex: 2, ...styles.buttonSecondary, borderRadius: 999, padding: 10 }}><X size={20} /></button><div style={{ color: "white", marginBottom: 12, fontWeight: 800, fontSize: 18, textAlign: "center" }}>{gallery.title}</div><div style={{ position: "relative", background: "#111", borderRadius: 24, overflow: "hidden" }}><img src={gallery.images[gallery.index]} alt={gallery.title} style={{ width: "100%", maxHeight: "78vh", objectFit: "contain", display: "block" }} />{gallery.images.length > 1 ? <><button onClick={prevGallery} style={{ position: "absolute", top: "50%", right: 12, transform: "translateY(-50%)", ...styles.buttonSecondary, borderRadius: 999, padding: 10 }}><ChevronRight size={22} /></button><button onClick={nextGallery} style={{ position: "absolute", top: "50%", left: 12, transform: "translateY(-50%)", ...styles.buttonSecondary, borderRadius: 999, padding: 10 }}><ChevronLeft size={22} /></button><div style={{ position: "absolute", bottom: 12, left: "50%", transform: "translateX(-50%)", background: "rgba(0,0,0,0.6)", color: "white", padding: "6px 12px", borderRadius: 999, fontSize: 13 }}>{gallery.index + 1} / {gallery.images.length}</div></> : null}</div></div></div> : null}
-      {successOrder ? <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 9998, display: "flex", alignItems: "center", justifyContent: "center", padding: 18 }}><div style={{ ...styles.card, width: "min(460px, 100%)", textAlign: "center" }}><div style={{ width: 70, height: 70, borderRadius: 999, background: "#d1fae5", color: "#065f46", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 14px", fontSize: 32 }}>✓</div><h2 style={{ margin: 0 }}>تم استلام طلبك</h2><p style={{ color: "#64748b", lineHeight: 1.8 }}>رقم الطلب الخاص بك:</p><div style={{ fontSize: 32, fontWeight: 900, color: primaryColor, marginBottom: 12 }}>{successOrder.orderCode}</div><div style={{ color: "#64748b", marginBottom: 18 }}>الإجمالي: {money(successOrder.total)}</div><button style={{ ...styles.button, background: primaryColor, width: "100%" }} onClick={() => setSuccessOrder(null)}>تم</button></div></div> : null}
+      {successOrder ? <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 9998, display: "flex", alignItems: "center", justifyContent: "center", padding: 18 }}><div style={{ ...styles.card, width: "min(460px, 100%)", textAlign: "center" }}><div style={{ width: 70, height: 70, borderRadius: 999, background: "#d1fae5", color: "#065f46", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 14px", fontSize: 32 }}>✓</div><h2 style={{ margin: 0 }}>{t.orderReceived}</h2><p style={{ color: "#64748b", lineHeight: 1.8 }}>{t.orderNumber}</p><div style={{ fontSize: 32, fontWeight: 900, color: primaryColor, marginBottom: 12 }}>{successOrder.orderCode}</div><div style={{ color: "#64748b", marginBottom: 18 }}>{t.total}: {money(successOrder.total)}</div><button style={{ ...styles.button, background: primaryColor, width: "100%" }} onClick={() => setSuccessOrder(null)}>{t.done}</button></div></div> : null}
     </div>
   );
 }
