@@ -403,7 +403,7 @@ function getModeFromURL() {
 }
 
 function isProtectedMode(mode) {
-  return ["admin", "cashier", "kitchen", "pickup"].includes(mode);
+  return mode === "admin";
 }
 
 function modeTitle(mode) {
