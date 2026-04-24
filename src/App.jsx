@@ -837,31 +837,31 @@ export default function App() {
 
   const logoutRole = (role) => {
     setRoleSession((prev) => ({ ...prev, [role]: false }));
-    setPendingMode(role);
+    setMode(role);
   };
 
   const tryOpenMode = (nextMode) => {
     if (!isProtectedMode(nextMode)) {
       setMode(nextMode);
-      setPendingMode(null);
+      setMode(null);
       return;
     }
     setMode(nextMode);
     if (roleSession?.[nextMode] !== true) {
-      setPendingMode(nextMode);
+      setMode(nextMode);
       setGateError("");
       setGatePassword("");
     }
   };
 
   const submitGate = () => {
-    if (!pendingMode) return;
-    const actual = rolePasswords?.[pendingMode] || "";
+    if (!Mode) return;
+    const actual = rolePasswords?.[Mode] || "";
     if (gatePassword === actual) {
-      setRoleSession((prev) => ({ ...prev, [pendingMode]: true }));
+      setRoleSession((prev) => ({ ...prev, [Mode]: true }));
       setGateError("");
       setGatePassword("");
-      setPendingMode(null);
+      setMode(null);
     } else {
       setGateError("كلمة المرور غير صحيحة");
     }
@@ -891,7 +891,7 @@ export default function App() {
     win.print();
   };
 
-  const renderRoleGate = pendingMode && isProtectedMode(mode) && roleSession?.[pendingMode] !== true;
+  const renderRoleGate = isProtectedMode(mode) && roleSession?.[mode] !== true;
 
   return (
     <div style={{ ...styles.app, background: pageBg, color: textColor, direction: language === "ar" ? "rtl" : "ltr" }}>
